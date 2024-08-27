@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Places Enricher 2.0</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ api_key }}&callback=initMap" async defer></script>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='coordinates_definition.css') }}"
+    />
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="side-panel">
+        <h1>Google Places Enricher 2.0</h1>
+        <div class="form-group">
+            <label for="city">Pesquisar cidade</label>
+            <input type="text" id="city" placeholder="Cidade">
+            <button onclick="searchCity()">Pesquisar</button>
+        </div>
+        <div class="form-group">
+            <label for="northeast-coord">Coordenada Nordeste</label>
+            <input type="text" id="northeast-lat" placeholder="Latitude" readonly>
+            <input type="text" id="northeast-lng" placeholder="Longitude" readonly>
+        </div>
+        <div class="form-group">
+            <label for="southwest-coord">Coordenada Sudoeste</label>
+            <input type="text" id="southwest-lat" placeholder="Latitude" readonly>
+            <input type="text" id="southwest-lng" placeholder="Longitude" readonly>
+        </div>
+        <div class="form-group">
+            <label for="radius">Raio</label>
+            <input type="text" id="radius" placeholder="Raio">
+        </div>
+        <button>Continuar</button>
+        
+        <div class="tabs">
+            <a href="#coordinates">Coordenadas</a>
+            <a href="#results">Resultados</a>
+            <a href="#categories">Categorias</a>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let clickCount = 0;
+        let markers = [];
+        let northeastCoord = null;
+        let southwestCoord = null;
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: -34.397, lng: 150.644 },
+                zoom: 8,
+            });
+
+            google.maps.event.addListener(map, 'click', function(event) {
+                handleMapClick(event.latLng, map);
+            });
+        }
+
+        function handleMapClick(location, map) {
+            clickCount++;
+            if (clickCount === 1) {
+                northeastCoord = location;
+                document.getElementById('northeast-lat').value = location.lat();
+                document.getElementById('northeast-lng').value = location.lng();
+                placeMarker(location, map);
+            } else if (clickCount === 2) {
+                southwestCoord = location;
+                placeMarker(location, map);
+
+                if (isMoreNortheast(southwestCoord, northeastCoord)) {
+                    swapCoordinates();
+                }
+
+                document.getElementById('southwest-lat').value = southwestCoord.lat();
+                document.getElementById('southwest-lng').value = southwestCoord.lng();
+            }
+        }
+
+        function isMoreNortheast(coord1, coord2) {
+            return coord1.lat() > coord2.lat() && coord1.lng() > coord2.lng();
+        }
+
+        function swapCoordinates() {
+            [northeastCoord, southwestCoord] = [southwestCoord, northeastCoord];
+
+            document.getElementById('northeast-lat').value = northeastCoord.lat();
+            document.getElementById('northeast-lng').value = northeastCoord.lng();
+            document.getElementById('southwest-lat').value = southwestCoord.lat();
+            document.getElementById('southwest-lng').value = southwestCoord.lng();
+        }
+
+        function placeMarker(location, map) {
+            const marker = new google.maps.Marker({
+                position: location,
+                map: map,
+            });
+            markers.push(marker);
+        }
+
+        function searchCity() {
+            const city = document.getElementById('city').value;
+            const geocoder = new google.maps.Geocoder();
+
+            geocoder.geocode({ address: city }, function(results, status) {
+                if (status === 'OK') {
+                    const location = results[0].geometry.location;
+                    map.setCenter(location);
+                    map.setZoom(12);
+
+                    clearMarkers();
+
+                    placeMarker(location, map);
+                } else {
+                    alert('Geocode was not successful for the following reason: ' + status);
+                }
+            });
+        }
+
+        function clearMarkers() {
+            for (let i = 0; i < markers.length; i++) {
+                markers[i].setMap(null);
+            }
+            markers = [];
+        }
+    </script>
+</body>
+</html>
