@@ -11,6 +11,7 @@ python = ">=3.11,<3.14"
 Flask = "^3.0.3"
 python-dotenv = "^1.0.1"
 # poetry run pip install pywebview[qt]
+requests = "^2.32.3"
 
 
 [tool.poetry.group.dev.dependencies]

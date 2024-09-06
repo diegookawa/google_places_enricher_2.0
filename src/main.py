@@ -1,35 +1,77 @@
+import logging
+from logging.handlers import RotatingFileHandler
+import signal
+import os
+import sys
+import socket
+import requests
+
+import webview
 from multiprocessing import freeze_support, Process
 from threading import Thread
 from app import app
-import webview
-import signal
-import os
+
+APP_NAME="Google Places Enricher 2.0"
+
+logger = logging.getLogger(__name__)
+
+stdout = sys.stdout
+def write_log(buf):
+    stdout.write(buf)
+    for line in buf.rstrip().splitlines():
+          logger.info(line.rstrip())
+
+logger.write = write_log
+logger.flush = lambda: None
+logger.setLevel("INFO")
+
+sys.stdout = logger
+sys.stderr = logger
+
+handler = RotatingFileHandler('google_places_enricher.log', maxBytes=5 * 1024 * 1024, backupCount=10)
+logger.addHandler(handler)
+
+def exception_handler(type, value, tb):
+    logger.exception("Uncaught exception: {0}".format(str(value)))
+
+sys.excepthook = exception_handler
+
+def get_open_port():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("", 0))
+    # s.listen(1)
+    port = s.getsockname()[1]
+    s.close()
+    return port
 
 def pywebview_process(port=5000):
-    window = webview.create_window('Hello world', f'http://localhost:{port}')
-    webview.start(gui="qt")
+    webview.create_window(APP_NAME, f'http://localhost:{port}')
+    webview.start()
 
-def pywebview_thread():
-    process = Process(target=pywebview_process)
+def pywebview_thread(port=5000):
+    process = Process(target=pywebview_process, args=(port,))
     process.daemon = True
     process.start()
     process.join()
-    
-    # Send SIGINT (CTRL+C) to the main thread when webview closes
-    os.kill(os.getpid(), signal.SIGINT) #TODO: Test if working correctly in windows
-    print("Killing SIGINT.")
+    os.kill(os.getpid(), signal.CTRL_C_EVENT)
+    while True:
+        logger.info("Shutting down...")
+        try:
+            requests.get(f"http://localhost:{port}/", timeout=1)
+        except requests.exceptions.ConnectionError:
+            break
 
-def flask_app():
-    app.run()
+def flask_app(port=5000):
+    app.run(port=port)
 
 def main():
-    webview_thread = Thread(target=pywebview_thread) #TODO: Find available port for flask and pass to webview
+    port = get_open_port()
+
+    webview_thread = Thread(target=pywebview_thread, args=(port,))
     webview_thread.daemon = True
     webview_thread.start()
-
-    flask_app()
-
-freeze_support()
+    flask_app(port=port)
 
 if __name__ == "__main__":
+    freeze_support()
     main()

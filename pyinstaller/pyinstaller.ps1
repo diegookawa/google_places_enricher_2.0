@@ -1,0 +1,1 @@
+pyi-makespec --name "Google Places Enricher 2.0" --windowed ../src/main.py
