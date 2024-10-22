@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Google Places Enricher 2.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
     <script
       src="https://maps.googleapis.com/maps/api/js?key={{ api_key }}&callback=initMap"
       async
@@ -45,10 +47,19 @@
         />
       </div>
       <div class="form-group">
-        <label for="radius">Raio (m)</label>
+        <label for="center-coord">Coordenada Central</label>
+        <input type="text" id="center-lat" placeholder="Latitude" readonly />
+        <input type="text" id="center-lng" placeholder="Longitude" readonly />
+      </div>
+      <div class="form-group">
+        <label for="center-radius">Raio para ponto central (m)</label>
+        <input type="text" id="center-radius" placeholder="Raio em metros" />
+      </div>
+      <div class="form-group">
+        <label for="radius">Raio (m) para áreas</label>
         <input type="text" id="radius" placeholder="Raio em metros" />
       </div>
-      <button onclick="drawShapes()">Visualizar regiões</button>
+      <button onclick="generateRegions()">Visualizar regiões</button>
 
       <div class="tabs">
         <a href="#coordinates">Coordenadas</a>
@@ -58,43 +69,65 @@
     </div>
 
     <script>
-      let map;
-      let clickCount = 0;
-      let markers = [];
-      let northeastCoord = null;
-      let southwestCoord = null;
-      let circles = [];
-      let rectangle = null;
+      const METER_TO_LAT = 1 / 110574;
+      const METER_TO_LNG_BASE = 1 / 111320;
+      const DEFAULT_CENTER = { lat: -34.397, lng: 150.644 };
+      const DEFAULT_ZOOM = 8;
+      const RADIUS_STEP_MULTIPLIER = 1.5;
+
+      let map,
+        clickCount = 0,
+        markers = [],
+        northeastCoord = null,
+        southwestCoord = null,
+        centerCoord = null,
+        circles = [],
+        rectangle = null;
 
       function initMap() {
         map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: -34.397, lng: 150.644 },
-          zoom: 8,
+          center: DEFAULT_CENTER,
+          zoom: DEFAULT_ZOOM,
         });
 
         google.maps.event.addListener(map, "click", function (event) {
-          handleMapClick(event.latLng, map);
+          handleMapClick(event.latLng);
         });
       }
 
-      function handleMapClick(location, map) {
+      function handleMapClick(location) {
         clickCount++;
         if (clickCount === 1) {
-          northeastCoord = location;
-          document.getElementById("northeast-lat").value = location.lat();
-          document.getElementById("northeast-lng").value = location.lng();
-          placeMarker(location, map);
+          setNortheastCoord(location);
         } else if (clickCount === 2) {
-          southwestCoord = location;
-          placeMarker(location, map);
-
-          if (isMoreNortheast(southwestCoord, northeastCoord)) {
-            swapCoordinates();
-          }
-
-          document.getElementById("southwest-lat").value = southwestCoord.lat();
-          document.getElementById("southwest-lng").value = southwestCoord.lng();
+          setSouthwestCoord(location);
+        } else if (clickCount === 3) {
+          setCenterCoord(location);
         }
+      }
+
+      function setNortheastCoord(location) {
+        northeastCoord = location;
+        document.getElementById("northeast-lat").value = location.lat();
+        document.getElementById("northeast-lng").value = location.lng();
+        placeMarker(location);
+      }
+
+      function setSouthwestCoord(location) {
+        southwestCoord = location;
+        if (isMoreNortheast(southwestCoord, northeastCoord)) {
+          swapCoordinates();
+        }
+        document.getElementById("southwest-lat").value = southwestCoord.lat();
+        document.getElementById("southwest-lng").value = southwestCoord.lng();
+        placeMarker(location);
+      }
+
+      function setCenterCoord(location) {
+        centerCoord = location;
+        document.getElementById("center-lat").value = location.lat();
+        document.getElementById("center-lng").value = location.lng();
+        placeMarker(location);
       }
 
       function isMoreNortheast(coord1, coord2) {
@@ -103,19 +136,24 @@
 
       function swapCoordinates() {
         [northeastCoord, southwestCoord] = [southwestCoord, northeastCoord];
+        updateCoordinateFields();
+      }
 
+      function updateCoordinateFields() {
         document.getElementById("northeast-lat").value = northeastCoord.lat();
         document.getElementById("northeast-lng").value = northeastCoord.lng();
         document.getElementById("southwest-lat").value = southwestCoord.lat();
         document.getElementById("southwest-lng").value = southwestCoord.lng();
       }
 
-      function placeMarker(location, map) {
-        const marker = new google.maps.Marker({
-          position: location,
-          map: map,
-        });
+      function placeMarker(location) {
+        const marker = new google.maps.Marker({ position: location, map: map });
         markers.push(marker);
+      }
+
+      function clearMarkers() {
+        markers.forEach((marker) => marker.setMap(null));
+        markers = [];
       }
 
       function searchCity() {
@@ -127,70 +165,63 @@
             const location = results[0].geometry.location;
             map.setCenter(location);
             map.setZoom(12);
-
             clearMarkers();
-            placeMarker(location, map);
+            placeMarker(location);
           } else {
-            alert(
-              "Geocode error " + status
-            );
+            alert("Geocode error " + status);
           }
         });
       }
 
-      function clearMarkers() {
-        for (let i = 0; i < markers.length; i++) {
-          markers[i].setMap(null);
-        }
-        markers = [];
-      }
-
-      let METER_TO_LAT = 1 / 110574;
-      let METER_TO_LNG_BASE = 1 / 111320;
-
-      function drawShapes() {
-        if (!northeastCoord || !southwestCoord) {
+      function generateRegions() {
+        if (!northeastCoord || !southwestCoord || !centerCoord) {
           alert(
-            "Por favor, defina as coordenadas Nordeste e Sudoeste antes de desenhar."
+            "Por favor, defina as coordenadas Nordeste, Sudoeste e Central antes de desenhar."
           );
           return;
         }
 
         const radius = parseFloat(document.getElementById("radius").value);
-        if (isNaN(radius) || radius <= 0) {
-          alert("Por favor, insira um valor de raio válido.");
+        const centerRadius = parseFloat(
+          document.getElementById("center-radius").value
+        );
+
+        if (
+          isNaN(radius) ||
+          radius <= 0 ||
+          isNaN(centerRadius) ||
+          centerRadius <= 0
+        ) {
+          alert("Por favor, insira valores válidos de raio.");
           return;
         }
 
+        drawShapes(radius);
+        drawCentralCircle(centerRadius);
+        callCalculateCoordinates(radius);
+      }
+
+      function callCalculateCoordinates(radius) {
+        const data = {
+          radius: radius,
+          southwestLat: southwestCoord.lat(),
+          southwestLon: southwestCoord.lng(),
+          northeastLat: northeastCoord.lat(),
+          northeastLon: northeastCoord.lng(),
+        };
+
+        fetch("/calculate_coordinates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        })
+          .then((response) => response.json())
+          .then((data) => console.log(data))
+          .catch((error) => console.error("Error:", error));
+      }
+
+      function drawShapes(radius) {
         clearCirclesAndRectangle();
-
-        const stepsize = radius + radius / 2;
-        const meterToLng = (lat) =>
-          METER_TO_LNG_BASE / Math.cos(lat * (Math.PI / 180));
-
-        let swX = southwestCoord.lng();
-        let swY = southwestCoord.lat();
-        let neX = northeastCoord.lng();
-        let neY = northeastCoord.lat();
-
-        let x = swX + (3 / 4) * radius * meterToLng(swY);
-        while (x < neX) {
-          let y = swY + (3 / 4) * radius * METER_TO_LAT;
-          while (y < neY) {
-            const circle = new google.maps.Circle({
-              strokeColor: "#000000",
-              strokeOpacity: 1,
-              strokeWeight: 2,
-              fillOpacity: 0,
-              map: map,
-              center: { lat: y, lng: x },
-              radius: radius,
-            });
-            circles.push(circle);
-            y += stepsize * METER_TO_LAT;
-          }
-          x += stepsize * meterToLng(y);
-        }
 
         const bounds = {
           north: northeastCoord.lat(),
@@ -200,22 +231,65 @@
         };
 
         rectangle = new google.maps.Rectangle({
-          strokeColor: "#0000FF",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
+          strokeColor: "#FF0000",
+          strokeOpacity: 1,
+          strokeWeight: 3,
           fillColor: "#0000FF",
-          fillOpacity: 0.35,
-          map: map,
+          fillOpacity: 0.1,
+          map,
           bounds: bounds,
         });
+
+        drawCircles(radius);
+      }
+
+      function drawCircles(radius) {
+        const step = radius * RADIUS_STEP_MULTIPLIER;
+        const startLat = southwestCoord.lat() + (step / 111320) * 0.75;
+        const startLon = southwestCoord.lng() + (step / 111320) * 0.75;
+
+        for (
+          let lon = startLon;
+          lon <= northeastCoord.lng();
+          lon += step / 111320
+        ) {
+          for (
+            let lat = startLat;
+            lat <= northeastCoord.lat();
+            lat += step / 111320
+          ) {
+            const circle = new google.maps.Circle({
+              strokeColor: "#0000FF",
+              strokeOpacity: 0.8,
+              strokeWeight: 2,
+              fillColor: "#ADD8E6",
+              fillOpacity: 0.35,
+              map: map,
+              center: { lat: lat, lng: lon },
+              radius: radius,
+            });
+            circles.push(circle);
+          }
+        }
+      }
+
+      function drawCentralCircle(radius) {
+        const centralCircle = new google.maps.Circle({
+          strokeColor: "#FFFF00",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#FFFF00",
+          fillOpacity: 0.35,
+          map: map,
+          center: { lat: centerCoord.lat(), lng: centerCoord.lng() },
+          radius: radius,
+        });
+        circles.push(centralCircle);
       }
 
       function clearCirclesAndRectangle() {
-        for (let circle of circles) {
-          circle.setMap(null);
-        }
+        circles.forEach((circle) => circle.setMap(null));
         circles = [];
-
         if (rectangle) {
           rectangle.setMap(null);
           rectangle = null;
