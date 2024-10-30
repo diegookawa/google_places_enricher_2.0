@@ -28,7 +28,10 @@ logger.setLevel("INFO")
 sys.stdout = logger
 sys.stderr = logger
 
-handler = RotatingFileHandler('google_places_enricher.log', maxBytes=5 * 1024 * 1024, backupCount=10)
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+handler = RotatingFileHandler('logs/google_places_enricher.log', maxBytes=5 * 1024 * 1024, backupCount=10)
 logger.addHandler(handler)
 
 def exception_handler(type, value, tb):
