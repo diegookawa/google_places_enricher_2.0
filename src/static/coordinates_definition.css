@@ -40,6 +40,7 @@ button {
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
+    margin-top: 10px; /* Adicionado */
 }
 
 button:hover {
@@ -62,4 +63,10 @@ button:hover {
 
 .tabs a:hover {
     text-decoration: underline;
+}
+
+/* Estilo adicional */
+.form-group button {
+    margin-top: 10px;
+    margin-bottom: 10px;
 }

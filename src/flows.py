@@ -27,10 +27,10 @@ def calculate_coordinates(
     """
 
     RADIUS = radius
-    NORTHEAST_LAT = southwest_lat
-    NORTHEAST_LON = southwest_lon
-    SOUTHWEST_LAT = northeast_lat
-    SOUTHWEST_LON = northeast_lon
+    SOUTHWEST_LAT = southwest_lat
+    NORTHEAST_LAT = northeast_lat
+    NORTHEAST_LON = northeast_lon
+    SOUTHWEST_LON = southwest_lon
     
     to_proxy_transformer = pyproj.Transformer.from_crs("epsg:4326", "epsg:3857")
     to_original_transformer = pyproj.Transformer.from_crs("epsg:3857", "epsg:4326")
@@ -53,7 +53,7 @@ def calculate_coordinates(
             y += stepsize
         x += stepsize
 
-    with open("../data/output/lat_lon_calculated.csv", "w") as of:
+    with open("./static/lat_lon_calculated.csv", "w") as of:
         of.write("lat;lon\n")
         for p in gridpoints:
             of.write("{:f};{:f}\n".format(p.x, p.y))
