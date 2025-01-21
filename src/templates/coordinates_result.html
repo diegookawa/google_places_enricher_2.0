@@ -10,7 +10,7 @@
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='coordinates_result.css') }}"
+      href="{{ url_for('static', filename='components_result.css') }}"
     />
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
@@ -24,28 +24,27 @@
       </div>
       <div class="table-buttons">
         <div class="btn-group">
-          <button class="btn-outline">Delete</button>
-          <button class="btn-outline">Filters</button>
-          <button class="btn-outline">Export</button>
-          <button class="btn-primary">
-            <a
-              href="{{ url_for('categories') }}"
-              style="color: white; text-decoration: none"
-              >+ Add categories</a
-            >
-          </button>
+          <button id="delete-btn" class="btn-outline">Delete</button>
+          <button id="export-btn" class="btn-outline">Export</button>
+          <button class="btn-primary">+ Add establishment</button>
         </div>
       </div>
       <table id="example" class="display">
         <thead>
           <tr>
             <th><input type="checkbox" id="select-all" /></th>
-            <th>Latitude</th>
-            <th>Longitude</th>
+            <th>lat</th>
+            <th>lon</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
+    </div>
+    <div class="footer-buttons">
+      <button class="btn-blue">Continue</button>
+      <button class="btn-outline">Coordinates</button>
+      <button class="btn-outline">Results</button>
+      <button class="btn-outline">Categories</button>
     </div>
 
     <script>
@@ -54,15 +53,6 @@
           paging: false,
           info: false,
           ordering: true,
-          columns: [
-            {
-              data: null,
-              defaultContent: '<input type="checkbox" class="row-checkbox">',
-              orderable: false,
-            },
-            { data: "lat", title: "Latitude" },
-            { data: "lon", title: "Longitude" },
-          ],
         });
 
         $("#select-all").on("click", function () {
@@ -70,9 +60,9 @@
           $('input[type="checkbox"]', rows).prop("checked", this.checked);
         });
 
-        Papa.parse("static/data/output/lat_lon_calculated.csv", {
+        Papa.parse("/static/data/output/lat_lon_calculated.csv", {
           download: true,
-          header: true,
+          header: false,
           delimiter: ";",
           skipEmptyLines: true,
           complete: function (results) {
@@ -80,20 +70,54 @@
             if (data.length === 0) {
               console.error("No data found");
             } else {
-              data.forEach(function (row) {
-                console.log(row);
-                table.row
-                  .add({
-                    lat: row.lat,
-                    lon: row.lon,
-                  })
-                  .draw(false);
+              data.forEach(function (row, index) {
+                if (index > 0) {
+                  table.row
+                    .add([
+                      '<input type="checkbox" class="row-checkbox">',
+                      row[0],
+                      row[1],
+                    ])
+                    .draw(false);
+                }
               });
             }
           },
           error: function (error) {
             console.error("Error loading CSV", error);
           },
+        });
+
+        $("#delete-btn").on("click", function () {
+          table.rows('.selected').remove().draw();
+        });
+
+        $("#export-btn").on("click", function () {
+          var data = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            data.push([rowData[1], rowData[2]]);
+          });
+
+          var csv = Papa.unparse(data);
+          var hiddenElement = document.createElement("a");
+          hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+          hiddenElement.target = "_blank";
+          hiddenElement.download = "lat_lon_data.csv";
+          hiddenElement.click();
+        });
+
+        $('#example tbody').on('click', 'input[type="checkbox"]', function () {
+          var row = $(this).closest('tr');
+          if (this.checked) {
+            row.addClass('selected');
+          } else {
+            row.removeClass('selected');
+          }
+        });
+        
+        $('#example thead th').on('click', function (e) {
+          e.stopPropagation();
         });
       });
     </script>
