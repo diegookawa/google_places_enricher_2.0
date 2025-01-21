@@ -18,9 +18,9 @@
   </head>
   <body>
     <div class="table-container">
-      <h1>Establishments</h1>
+      <h1>Coordinates calculated</h1>
       <div class="table-description">
-        Establishments obtained from the selected region.
+        Coordinates calculated based on the regions.
       </div>
       <div class="table-buttons">
         <div class="btn-group">
@@ -49,7 +49,7 @@
       </table>
     </div>
     <div class="footer-buttons">
-      <button class="btn-blue">Continue</button>
+      <button id="continue-btn" class="btn-blue">Continue</button>
     </div>
 
     <script>
@@ -59,6 +59,8 @@
           info: false,
           ordering: true,
         });
+
+        var lastSelectedRow = null;
 
         $("#select-all").on("click", function () {
           var rows = table.rows({ search: "applied" }).nodes();
@@ -116,20 +118,17 @@
           var row = $(this).closest('tr');
           var isShiftPressed = e.shiftKey;
 
-          if (isShiftPressed) {
-            var lastSelectedRow = $('#example tbody tr.selected').last();
-            if (lastSelectedRow.length) {
-              var lastIndex = table.row(lastSelectedRow).index();
-              var currentIndex = table.row(row).index();
-              var start = Math.min(lastIndex, currentIndex);
-              var end = Math.max(lastIndex, currentIndex);
+          if (isShiftPressed && lastSelectedRow !== null) {
+            var start = table.row(lastSelectedRow).index();
+            var end = table.row(row).index();
+            var rows = table.rows().nodes();
 
-              table.rows().every(function (index) {
-                if (index >= start && index <= end) {
-                  this.node().querySelector('input[type="checkbox"]').checked = true;
-                  $(this.node()).addClass('selected');
-                }
-              });
+            var min = Math.min(start, end);
+            var max = Math.max(start, end);
+
+            for (var i = min; i <= max; i++) {
+              $('input[type="checkbox"]', rows[i]).prop("checked", true);
+              $(rows[i]).addClass('selected');
             }
           } else {
             if (this.checked) {
@@ -138,6 +137,8 @@
               row.removeClass('selected');
             }
           }
+
+          lastSelectedRow = row;
         });
 
         $('#add-coordinate-btn').on('click', function () {
@@ -154,7 +155,7 @@
 
           if (lat && lon) {
             table.row
-              .add([  
+              .add([
                 '<input type="checkbox" class="row-checkbox">',
                 lat,
                 lon,
@@ -171,6 +172,27 @@
 
         $('#example thead th').on('click', function (e) {
           e.stopPropagation();
+        });
+
+        $('#continue-btn').on('click', function () {
+          var data = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            data.push([rowData[1], rowData[2]]); 
+          });
+
+          $.ajax({
+            url: "/update_csv", 
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ coordinates: data }), 
+            success: function(response) {
+              alert('CSV atualizado com sucesso!');
+            },
+            error: function(xhr, status, error) {
+              alert('Ocorreu um erro ao atualizar o arquivo.');
+            }
+          });
         });
       });
     </script>

@@ -4,6 +4,7 @@ from flows import calculate_coordinates
 from werkzeug.utils import secure_filename
 
 import pandas as pd
+import csv
 import os
 
 app = Flask(__name__)
@@ -16,6 +17,23 @@ load_dotenv()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/update_csv', methods=['POST'])
+def update_csv():
+    data = request.get_json()
+    coordinates = data.get('coordinates')
+
+    csv_file_path = 'static/data/output/lat_lon_calculated.csv'
+
+    try:
+        with open(csv_file_path, mode='w', newline='') as file:
+            writer = csv.writer(file, delimiter=';')
+            writer.writerow(['lat', 'lon'])
+            for coord in coordinates:
+                writer.writerow(coord)
+        return jsonify({"message": "CSV updated successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/calculate_coordinates", methods=["POST"])
 def calculate_coordinates_route():
