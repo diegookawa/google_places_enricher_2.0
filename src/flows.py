@@ -53,7 +53,7 @@ def calculate_coordinates(
             y += stepsize
         x += stepsize
 
-    with open("./static/lat_lon_calculated.csv", "w") as of:
+    with open("../data/output/lat_lon_calculated.csv", "w") as of:
         of.write("lat;lon\n")
         for p in gridpoints:
             of.write("{:f};{:f}\n".format(p.x, p.y))
