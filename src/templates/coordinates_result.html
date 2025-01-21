@@ -26,8 +26,16 @@
         <div class="btn-group">
           <button id="delete-btn" class="btn-outline">Delete</button>
           <button id="export-btn" class="btn-outline">Export</button>
-          <button class="btn-primary">+ Add establishment</button>
+          <button class="btn-primary" id="add-coordinate-btn">+ Add Coordinate</button>
         </div>
+      </div>
+      <div id="coordinate-form" style="display:none;">
+        <label for="lat">Latitude: </label>
+        <input type="text" id="lat" placeholder="Enter latitude" required />
+        <label for="lon">Longitude: </label>
+        <input type="text" id="lon" placeholder="Enter longitude" required />
+        <button id="submit-coordinate" class="btn-primary">Add Coordinate</button>
+        <button id="cancel-coordinate" class="btn-outline">Cancel</button>
       </div>
       <table id="example" class="display">
         <thead>
@@ -42,9 +50,6 @@
     </div>
     <div class="footer-buttons">
       <button class="btn-blue">Continue</button>
-      <button class="btn-outline">Coordinates</button>
-      <button class="btn-outline">Results</button>
-      <button class="btn-outline">Categories</button>
     </div>
 
     <script>
@@ -73,7 +78,7 @@
               data.forEach(function (row, index) {
                 if (index > 0) {
                   table.row
-                    .add([
+                    .add([  
                       '<input type="checkbox" class="row-checkbox">',
                       row[0],
                       row[1],
@@ -107,15 +112,63 @@
           hiddenElement.click();
         });
 
-        $('#example tbody').on('click', 'input[type="checkbox"]', function () {
+        $('#example tbody').on('click', 'input[type="checkbox"]', function (e) {
           var row = $(this).closest('tr');
-          if (this.checked) {
-            row.addClass('selected');
+          var isShiftPressed = e.shiftKey;
+
+          if (isShiftPressed) {
+            var lastSelectedRow = $('#example tbody tr.selected').last();
+            if (lastSelectedRow.length) {
+              var lastIndex = table.row(lastSelectedRow).index();
+              var currentIndex = table.row(row).index();
+              var start = Math.min(lastIndex, currentIndex);
+              var end = Math.max(lastIndex, currentIndex);
+
+              table.rows().every(function (index) {
+                if (index >= start && index <= end) {
+                  this.node().querySelector('input[type="checkbox"]').checked = true;
+                  $(this.node()).addClass('selected');
+                }
+              });
+            }
           } else {
-            row.removeClass('selected');
+            if (this.checked) {
+              row.addClass('selected');
+            } else {
+              row.removeClass('selected');
+            }
           }
         });
-        
+
+        $('#add-coordinate-btn').on('click', function () {
+          $('#coordinate-form').show();
+        });
+
+        $('#cancel-coordinate').on('click', function () {
+          $('#coordinate-form').hide();
+        });
+
+        $('#submit-coordinate').on('click', function () {
+          var lat = $('#lat').val();
+          var lon = $('#lon').val();
+
+          if (lat && lon) {
+            table.row
+              .add([  
+                '<input type="checkbox" class="row-checkbox">',
+                lat,
+                lon,
+              ])
+              .draw(false);
+
+            $('#lat').val('');
+            $('#lon').val('');
+            $('#coordinate-form').hide();
+          } else {
+            alert('Please enter both latitude and longitude');
+          }
+        });
+
         $('#example thead th').on('click', function (e) {
           e.stopPropagation();
         });
