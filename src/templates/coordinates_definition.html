@@ -22,12 +22,12 @@
     <div id="side-panel">
       <h1>Google Places Enricher 2.0</h1>
       <div class="form-group">
-        <label for="city">Pesquisar cidade</label>
-        <input type="text" id="city" placeholder="Cidade" />
-        <button onclick="searchCity()">Pesquisar</button>
+        <label for="city">Search City</label>
+        <input type="text" id="city" placeholder="City" />
+        <button onclick="searchCity()">Search</button>
       </div>
       <div class="form-group">
-        <label for="northeast-coord">Coordenada Nordeste</label>
+        <label for="northeast-coord">Northeast Coordinate</label>
         <input
           type="text"
           id="northeast-lat"
@@ -44,7 +44,7 @@
         />
       </div>
       <div class="form-group">
-        <label for="southwest-coord">Coordenada Sudoeste</label>
+        <label for="southwest-coord">Southwest Coordinate</label>
         <input
           type="text"
           id="southwest-lat"
@@ -61,7 +61,7 @@
         />
       </div>
       <div class="form-group">
-        <label for="center-coord">Coordenada Central</label>
+        <label for="center-coord">Central Coordinate</label>
         <input
           type="text"
           id="center-lat"
@@ -78,31 +78,30 @@
         />
       </div>
       <div class="form-group">
-        <label for="center-radius">Raio para ponto central (m)</label>
+        <label for="center-radius">Radius for Central Point (m)</label>
         <input
           type="text"
           id="center-radius"
-          placeholder="Raio em metros"
+          placeholder="Radius in meters"
           oninput="checkFields()"
         />
       </div>
       <div class="form-group">
-        <label for="radius">Raio (m) para áreas</label>
+        <label for="radius">Radius (m) for Areas</label>
         <input
           type="text"
           id="radius"
-          placeholder="Raio em metros"
+          placeholder="Radius in meters"
           oninput="checkFields()"
         />
       </div>
-      <button onclick="generateRegions()">Visualizar regiões</button>
+      <button onclick="generateRegions()">Visualize Regions</button>
       <button id="calculate-btn" onclick="calculateCoordinates()">
-        Calcular coordenadas
+        Calculate Coordinates
       </button>
       <button onclick="clearFieldsAndMarkers()">
-        Limpar campos e marcadores
+        Clear Fields and Markers
       </button>
-
     </div>
     <script>
       const METER_TO_LAT = 1 / 110574;

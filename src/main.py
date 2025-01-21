@@ -1,15 +1,16 @@
-import logging
+
+from multiprocessing import freeze_support, Process
 from logging.handlers import RotatingFileHandler
+from threading import Thread
+from app import app
+
+import logging
 import signal
 import os
 import sys
 import socket
 import requests
-
 import webview
-from multiprocessing import freeze_support, Process
-from threading import Thread
-from app import app
 
 APP_NAME="Google Places Enricher 2.0"
 
