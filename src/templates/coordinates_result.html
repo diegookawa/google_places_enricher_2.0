@@ -18,7 +18,7 @@
   </head>
   <body>
     <div class="table-container">
-      <h1>Coordinates calculated</h1>
+      <h1>Coordinates Calculated</h1>
       <div class="table-description">
         Coordinates calculated based on the regions.
       </div>
@@ -26,23 +26,27 @@
         <div class="btn-group">
           <button id="delete-btn" class="btn-outline">Delete</button>
           <button id="export-btn" class="btn-outline">Export</button>
-          <button class="btn-primary" id="add-coordinate-btn">+ Add Coordinate</button>
+          <button class="btn-primary" id="add-coordinate-btn">
+            + Add Coordinate
+          </button>
         </div>
       </div>
-      <div id="coordinate-form" style="display:none;">
+      <div id="coordinate-form" style="display: none">
         <label for="lat">Latitude: </label>
         <input type="text" id="lat" placeholder="Enter latitude" required />
         <label for="lon">Longitude: </label>
         <input type="text" id="lon" placeholder="Enter longitude" required />
-        <button id="submit-coordinate" class="btn-primary">Add Coordinate</button>
+        <button id="submit-coordinate" class="btn-primary">
+          Add Coordinate
+        </button>
         <button id="cancel-coordinate" class="btn-outline">Cancel</button>
       </div>
       <table id="example" class="display">
         <thead>
           <tr>
             <th><input type="checkbox" id="select-all" /></th>
-            <th>lat</th>
-            <th>lon</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -80,7 +84,7 @@
               data.forEach(function (row, index) {
                 if (index > 0) {
                   table.row
-                    .add([  
+                    .add([ 
                       '<input type="checkbox" class="row-checkbox">',
                       row[0],
                       row[1],
@@ -96,7 +100,7 @@
         });
 
         $("#delete-btn").on("click", function () {
-          table.rows('.selected').remove().draw();
+          table.rows(".selected").remove().draw();
         });
 
         $("#export-btn").on("click", function () {
@@ -114,8 +118,8 @@
           hiddenElement.click();
         });
 
-        $('#example tbody').on('click', 'input[type="checkbox"]', function (e) {
-          var row = $(this).closest('tr');
+        $("#example tbody").on("click", 'input[type="checkbox"]', function (e) {
+          var row = $(this).closest("tr");
           var isShiftPressed = e.shiftKey;
 
           if (isShiftPressed && lastSelectedRow !== null) {
@@ -128,70 +132,71 @@
 
             for (var i = min; i <= max; i++) {
               $('input[type="checkbox"]', rows[i]).prop("checked", true);
-              $(rows[i]).addClass('selected');
+              $(rows[i]).addClass("selected");
             }
           } else {
             if (this.checked) {
-              row.addClass('selected');
+              row.addClass("selected");
             } else {
-              row.removeClass('selected');
+              row.removeClass("selected");
             }
           }
 
           lastSelectedRow = row;
         });
 
-        $('#add-coordinate-btn').on('click', function () {
-          $('#coordinate-form').show();
+        $("#add-coordinate-btn").on("click", function () {
+          $("#coordinate-form").show();
         });
 
-        $('#cancel-coordinate').on('click', function () {
-          $('#coordinate-form').hide();
+        $("#cancel-coordinate").on("click", function () {
+          $("#coordinate-form").hide();
         });
 
-        $('#submit-coordinate').on('click', function () {
-          var lat = $('#lat').val();
-          var lon = $('#lon').val();
+        $("#submit-coordinate").on("click", function () {
+          var lat = $("#lat").val();
+          var lon = $("#lon").val();
 
           if (lat && lon) {
             table.row
-              .add([
-                '<input type="checkbox" class="row-checkbox">',
-                lat,
-                lon,
-              ])
+              .add(['<input type="checkbox" class="row-checkbox">', lat, lon])
               .draw(false);
 
-            $('#lat').val('');
-            $('#lon').val('');
-            $('#coordinate-form').hide();
+            $("#lat").val("");
+            $("#lon").val("");
+            $("#coordinate-form").hide();
           } else {
-            alert('Please enter both latitude and longitude');
+            alert("Please enter both latitude and longitude");
           }
         });
 
-        $('#example thead th').on('click', function (e) {
+        $("#example thead th").on("click", function (e) {
           e.stopPropagation();
         });
 
-        $('#continue-btn').on('click', function () {
+        $("#continue-btn").on("click", function () {
           var data = [];
           table.rows().every(function () {
             var rowData = this.data();
-            data.push([rowData[1], rowData[2]]); 
+            data.push([rowData[1], rowData[2]]);
           });
 
           $.ajax({
-            url: "/update_csv", 
+            url: "/update_csv",
             method: "POST",
             contentType: "application/json",
-            data: JSON.stringify({ coordinates: data }), 
-            success: function(response) {
-              alert('CSV atualizado com sucesso!');
+            data: JSON.stringify({ coordinates: data }),
+            beforeSend: function () {
+              alert("Processing your request, please wait...");
             },
-            error: function(xhr, status, error) {
-              alert('Ocorreu um erro ao atualizar o arquivo.');
-            }
+            success: function (response) {
+              alert("CSV updated and Google Places API successfully called!");
+
+              window.location.href = "/components_result";
+            },
+            error: function (xhr, status, error) {
+              alert("An error occurred while processing the request.");
+            },
           });
         });
       });

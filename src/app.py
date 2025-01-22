@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from dotenv import load_dotenv, set_key
-from flows import calculate_coordinates
+from flows import calculate_coordinates, request_google_places
 from werkzeug.utils import secure_filename
 
 import pandas as pd
@@ -26,12 +26,20 @@ def update_csv():
     csv_file_path = 'static/data/output/lat_lon_calculated.csv'
 
     try:
+        # Updating the CSV with the received data
         with open(csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['lat', 'lon'])
             for coord in coordinates:
                 writer.writerow(coord)
-        return jsonify({"message": "CSV updated successfully!"}), 200
+        
+        # Calling the `request_google_places` function after updating the CSV
+        result = request_google_places()
+        if "successfully" not in result.lower():
+            return jsonify({"error": result}), 500
+
+        return jsonify({"message": "CSV updated and Google Places API called successfully!"}), 200
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -83,7 +91,7 @@ def coordinates_results():
 def categories():
     if request.method == 'POST':
         if 'csv-file' not in request.files:
-            return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+            return jsonify({'error': 'No file uploaded'}), 400
         file = request.files['csv-file']
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
@@ -93,7 +101,7 @@ def categories():
             categories = df['category'].tolist()
             return jsonify({'categories': categories})
         else:
-            return jsonify({'error': 'Formato de arquivo não permitido'}), 400
+            return jsonify({'error': 'Invalid file format'}), 400
     return render_template('categories.html')
 
 if __name__ == "__main__":

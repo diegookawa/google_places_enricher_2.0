@@ -1,16 +1,56 @@
-from email import message
-from utils import *
+import os
 import time
 import shapely.geometry
 import pyproj
+import requests
+from dotenv import load_dotenv
+from config import RADIUS, NORTHEAST_LAT, NORTHEAST_LON, SOUTHWEST_LAT, SOUTHWEST_LON
+from utils import read_file, initialize_variables_request, create_url_request, export_data_request, create_message_request
 
-
-def calculate_coordinates(
-    radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon
-):
+def update_config_file(radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon):
     """
-    Generates a csv file with the geographic coordinates of a rectangular area
-    and according to a predetermined step in meters.
+    Updates the config.py file with the new configuration values.
+
+    Parameters
+    ----------
+    radius : float
+        The new radius value.
+    southwest_lat : float
+        The new southwest latitude.
+    southwest_lon : float
+        The new southwest longitude.
+    northeast_lat : float
+        The new northeast latitude.
+    northeast_lon : float
+        The new northeast longitude.
+    """
+    config_path = "./config.py"
+
+    # Read the content of the config.py file
+    with open(config_path, "r") as f:
+        config_content = f.readlines()
+
+    # Update the lines with the new values
+    for i, line in enumerate(config_content):
+        if line.startswith("RADIUS"):
+            config_content[i] = f"RADIUS = {radius}\n"
+        elif line.startswith("SOUTHWEST_LAT"):
+            config_content[i] = f"SOUTHWEST_LAT = {southwest_lat}\n"
+        elif line.startswith("SOUTHWEST_LON"):
+            config_content[i] = f"SOUTHWEST_LON = {southwest_lon}\n"
+        elif line.startswith("NORTHEAST_LAT"):
+            config_content[i] = f"NORTHEAST_LAT = {northeast_lat}\n"
+        elif line.startswith("NORTHEAST_LON"):
+            config_content[i] = f"NORTHEAST_LON = {northeast_lon}\n"
+
+    # Write the updated content back to the file
+    with open(config_path, "w") as f:
+        f.writelines(config_content)
+
+def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon):
+    """
+    Generates a CSV file with the geographic coordinates of a rectangular area
+    and according to a predetermined step in meters and updates the values in the config file.
 
     Parameters
     ----------
@@ -31,7 +71,10 @@ def calculate_coordinates(
     NORTHEAST_LAT = northeast_lat
     NORTHEAST_LON = northeast_lon
     SOUTHWEST_LON = southwest_lon
-    
+
+    # Update the values in the config file
+    update_config_file(RADIUS, SOUTHWEST_LAT, SOUTHWEST_LON, NORTHEAST_LAT, NORTHEAST_LON)
+
     to_proxy_transformer = pyproj.Transformer.from_crs("epsg:4326", "epsg:3857")
     to_original_transformer = pyproj.Transformer.from_crs("epsg:3857", "epsg:4326")
 
@@ -60,24 +103,38 @@ def calculate_coordinates(
 
     return "Execution performed successfully."
 
-
-def request_google_places():
+def make_request(url, params=None):
     """
-    Performs requests to the Google places API, according to the geographic coordinates
-    defined in the input file and a predetermined radius.
-    It enriches the data according to the categories also defined in the input file
-    and handles the return of the API, making the data available in a csv file.
+    Makes an HTTP GET request and returns the JSON response.
 
     Parameters
     ----------
-    No Parameters.
+    url : str
+        The URL to make the request.
+    params : dict
+        Optional parameters to include in the request.
 
-    Raises
-    ------
-    FileNotFound
-        If the coordinates or categories file is not found in the target folder.
-    ErrorStatusMessage
-        if the Google places API return has a status other than OK.
+    Returns
+    -------
+    dict
+        The JSON response.
+    """
+    try:
+        response = requests.get(url, params=params)
+        print("Request URL:", response.url)  # Log the request URL
+        response_data = response.json()
+        print("Response:", response_data)  # Log the API response
+        return response_data
+    except Exception as e:
+        print("Error during request:", str(e))  # Log any errors
+        return {"status": "ERROR", "error_message": str(e)}
+
+def request_google_places():
+    """
+    Performs requests to the Google Places API, according to the geographic coordinates
+    defined in the input file and a predetermined radius.
+    It enriches the data according to the categories also defined in the input file
+    and handles the return of the API, making the data available in a CSV file.
 
     Returns
     -------
@@ -86,11 +143,11 @@ def request_google_places():
         otherwise the error that interrupted the execution.
     """
 
-    df_latlon = read_file("Coordinates", "data/input/lat_lon.csv")
+    df_latlon = read_file("Coordinates", "./static/data/output/lat_lon_calculated.csv")
     if type(df_latlon) == str:
         return df_latlon
 
-    df_categories = read_file("Categories", "data/input/categories_request.csv")
+    df_categories = read_file("Categories", "./static/data/input/categories_request.csv")
     if type(df_categories) == str:
         return df_categories
     if len(df_categories) == 0:
@@ -133,75 +190,17 @@ def request_google_places():
                 time.sleep(2)
 
             for establishment in establishments:
-
                 for feature_index in range(len(establishments_features_labels) - 1):
                     try:
                         establishments_features_data[feature_index].append(
                             establishment[establishments_features_labels[feature_index]]
                         )
-                    except:
+                    except KeyError:
                         establishments_features_data[feature_index].append(None)
 
-                establishments_features_data[
+                establishments_features_data[ 
                     len(establishments_features_data) - 1
                 ].append(cat)
 
     export_data_request(establishments_features_labels, establishments_features_data)
-    return "Execution performed successfully."
-
-
-def match_category_phrases():
-    """
-    Creates the Yelp phrases using the category hierarchical levels and creates the establishment phrases
-    using the Google categories and the enrichment categories. The records of establishments with their phrases are exported in a csv file.
-    Then, for each sentence of the establishment, it retrieves the Yelp sentence with the highest semantic textual similarity,
-    making these matchings available with their respective scores in a csv file.
-
-    Parameters
-    ----------
-    No Parameters.
-
-    Raises
-    ------
-    No Raises.
-
-    Returns
-    -------
-    str
-        Message indicating the end of execution.
-    """
-
-    df_categories_yelp = read_file(
-        "Hierarchical Yelp categories",
-        "data/input/hierarchical_yelp_categories.csv",
-        sep=",",
-    )
-    df_categories_yelp["phrase_yelp"] = create_yelp_phrase(df_categories_yelp)
-
-    df_estab = read_file("Establishments", "data/output/establishments.csv", sep=",")
-    df_categories_estab_phrases = create_estab_phrase(df_estab)
-
-    df_estab_phrases = df_categories_estab_phrases.merge(
-        df_estab, on="place_id", how="left"
-    )
-    df_estab_phrases.drop(columns=["categories", "types"], inplace=True)
-    df_estab_phrases.to_csv("data/output/establishments_sentences.csv", index=False)
-
-    df_estab_phrases_uniques = df_categories_estab_phrases.drop_duplicates(
-        subset="phrase_establishment"
-    )[["phrase_establishment"]]
-    df_estab_phrases_uniques["words_phrase_estab"] = df_estab_phrases_uniques[
-        "phrase_establishment"
-    ].apply(lambda frase: len(frase.split(" ")))
-    df_estab_phrases_uniques = df_estab_phrases_uniques[
-        df_estab_phrases_uniques["words_phrase_estab"] > 1
-    ]
-    df_estab_phrases_uniques = df_estab_phrases_uniques.reset_index()
-
-    df_score = calculate_similarity_sentences(
-        df_estab_phrases_uniques["phrase_establishment"],
-        df_categories_yelp["phrase_yelp"],
-    )
-    df_score.to_csv("data/output/matching_category_sentences.csv", index=False)
-
     return "Execution performed successfully."
