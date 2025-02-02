@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from dotenv import load_dotenv, set_key
 from flows import calculate_coordinates, request_google_places
 from werkzeug.utils import secure_filename
+from collections import Counter
+import ast
 
 import pandas as pd
 import csv
@@ -18,6 +20,66 @@ load_dotenv()
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def get_top_business_types(data):
+    all_types = [item.split(',')[0].strip("[]' ") for sublist in data['types'] for item in sublist.split(',')]
+    return pd.Series(all_types).value_counts().to_dict()
+
+@app.route('/view_data')
+def view_data():
+    try:
+        csv_path = 'static/data/output/establishments.csv'
+        try:
+            data = pd.read_csv(csv_path)
+        except FileNotFoundError:
+            return f"Erro: Arquivo {csv_path} não encontrado."
+        except Exception as e:
+            return f"Erro ao ler o arquivo CSV: {str(e)}"
+
+        required_columns = {'place_id', 'categories', 'lat', 'lon', 'business_status', 
+                            'name', 'price_level', 'rating', 'types', 'user_ratings_total', 'vicinity'}
+        missing_columns = required_columns - set(data.columns)
+        if missing_columns:
+            return f"Erro: Colunas ausentes no CSV: {missing_columns}"
+
+        data.fillna({
+            "rating": 0,
+            "business_status": "UNKNOWN",
+            "name": "Unnamed",
+            "user_ratings_total": 0,
+            "price_level": "Unknown",
+            "categories": "Unknown",
+            "types": "Unknown"
+        }, inplace=True)
+
+        data['rating'] = pd.to_numeric(data['rating'], errors='coerce').fillna(0)
+        data['user_ratings_total'] = pd.to_numeric(data['user_ratings_total'], errors='coerce').fillna(0)
+
+        category_counts = data['categories'].astype(str).value_counts().to_dict()
+
+        price_level_counts = data['price_level'].astype(str).value_counts().to_dict()
+
+        rating_vs_reviews = data[['user_ratings_total', 'rating']].to_dict(orient='records')
+
+        business_status_counts = data['business_status'].value_counts().to_dict()
+
+        business_type_counts = get_top_business_types(data)
+
+        data_json = data.to_dict(orient='records')
+
+        return render_template(
+            'view_data.html',
+            data=data_json,
+            category_counts=category_counts,
+            price_level_counts=price_level_counts,
+            rating_vs_reviews=rating_vs_reviews,
+            business_status_counts=business_status_counts,
+            business_type_counts=business_type_counts
+        )
+
+    except Exception as e:
+        return f"Erro inesperado: {str(e)}"
+
+
 @app.route('/update_csv', methods=['POST'])
 def update_csv():
     data = request.get_json()
@@ -26,14 +88,12 @@ def update_csv():
     csv_file_path = 'static/data/output/lat_lon_calculated.csv'
 
     try:
-        # Updating the CSV with the received data
         with open(csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['lat', 'lon'])
             for coord in coordinates:
                 writer.writerow(coord)
         
-        # Calling the `request_google_places` function after updating the CSV
         result = request_google_places()
         if "successfully" not in result.lower():
             return jsonify({"error": result}), 500

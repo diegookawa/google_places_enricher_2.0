@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-heat@0.2.0/dist/leaflet-heat.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='view_data.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Data Visualization for Establishments</h1>
+
+      <div class="row">
+        <div class="col">
+          <div class="chart-container">
+            <canvas id="categoryDistributionChart"></canvas>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="chart-container">
+            <canvas id="priceLevelChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <div class="chart-container">
+            <canvas id="ratingVsReviewsChart"></canvas>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="chart-container">
+            <canvas id="businessStatusChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <div class="chart-container">
+            <canvas id="topBusinessTypesChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="col-100">Heatmap of Establishments</h2>
+      <div id="map" class="col-100"></div>
+    </div>
+
+    <script>
+                const data = {{ data | tojson }};
+                const categoryCounts = {{ category_counts | tojson }};
+                const priceLevelCounts = {{ price_level_counts | tojson }};
+                const ratingVsReviews = {{ rating_vs_reviews | tojson }};
+                const businessStatusCounts = {{ business_status_counts | tojson }};
+                const businessTypeCounts = {{ business_type_counts | tojson }};
+
+                const ctx1 = document.getElementById('categoryDistributionChart').getContext('2d');
+                new Chart(ctx1, {
+                  type: 'bar',
+                  data: {
+                    labels: Object.keys(categoryCounts),
+                    datasets: [{
+                      label: 'Category Distribution',
+                      data: Object.values(categoryCounts),
+                      backgroundColor: '#4BC0C0',
+                    }]
+                  },
+                  options: { responsive: true }
+                });
+
+                const ctx2 = document.getElementById('priceLevelChart').getContext('2d');
+                new Chart(ctx2, {
+                  type: 'bar',
+                  data: {
+                    labels: Object.keys(priceLevelCounts),
+                    datasets: [{
+                      label: 'Price Level Distribution',
+                      data: Object.values(priceLevelCounts),
+                      backgroundColor: '#FF9F40',
+                    }]
+                  },
+                  options: { responsive: true }
+                });
+
+                const ctx3 = document.getElementById('ratingVsReviewsChart').getContext('2d');
+                new Chart(ctx3, {
+                  type: 'scatter',
+                  data: {
+                    datasets: [{
+                      label: 'Rating vs. Reviews',
+                      data: ratingVsReviews.map(item => ({ x: item.user_ratings_total, y: item.rating })),
+                      backgroundColor: '#36A2EB',
+                    }]
+                  },
+                  options: { responsive: true, scales: { x: { type: 'linear' }, y: { beginAtZero: true } } }
+                });
+
+                const ctx4 = document.getElementById('businessStatusChart').getContext('2d');
+                new Chart(ctx4, {
+                  type: 'bar',
+                  data: {
+                    labels: Object.keys(businessStatusCounts),
+                    datasets: [{
+                      label: 'Business Status Count',
+                      data: Object.values(businessStatusCounts),
+                      backgroundColor: '#FF6384',
+                    }]
+                  },
+                  options: { responsive: true }
+                });
+
+      const ctx5 = document.getElementById('topBusinessTypesChart').getContext('2d');
+      new Chart(ctx5, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(businessTypeCounts),
+          datasets: [{
+            label: 'Most Common Business Types',
+            data: Object.values(businessTypeCounts),
+            backgroundColor: '#36A2EB',
+          }]
+        },
+        options: { responsive: true }
+      });
+
+                const map = L.map('map').setView([0, 0], 2);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+
+                const heatmapData = data.map(item => [item.lat, item.lon]);
+                L.heatLayer(heatmapData, { radius: 25, blur: 15 }).addTo(map);
+    </script>
+  </body>
+</html>

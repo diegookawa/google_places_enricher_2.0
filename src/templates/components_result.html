@@ -24,10 +24,10 @@
       </div>
       <div class="table-buttons">
         <div class="btn-group">
-          <button class="btn-outline">Delete</button>
-          <button class="btn-outline">Filters</button>
-          <button class="btn-outline">Export</button>
-          <button class="btn-primary">+ Add establishment</button>
+          <button id="delete-btn" class="btn-outline">Delete</button>
+          <button id="export-btn" class="btn-outline">Export</button>
+          <button class="btn-primary" id="add-btn">+ Add establishment</button>
+          <a href="/view_data" class="btn-primary">View Data</a>
         </div>
       </div>
       <table id="example" class="display">
@@ -41,16 +41,75 @@
             <th>name</th>
             <th>rating</th>
             <th>types</th>
+            <th>user_ratings_total</th>
+            <th>vicinity</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
-    <div class="footer-buttons">
-      <button class="btn-blue">Continue</button>
-      <button class="btn-outline">Coordinates</button>
-      <button class="btn-outline">Results</button>
-      <button class="btn-outline">Categories</button>
+
+    <div id="addModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Add Establishment</h2>
+        <form id="addForm">
+          <input type="text" id="place_id" placeholder="Place ID" required />
+          <input
+            type="text"
+            id="categories"
+            placeholder="Categories (comma separated)"
+            required
+          />
+          <input
+            type="number"
+            step="any"
+            id="lat"
+            placeholder="Latitude"
+            required
+          />
+          <input
+            type="number"
+            step="any"
+            id="lon"
+            placeholder="Longitude"
+            required
+          />
+          <input
+            type="text"
+            id="business_status"
+            placeholder="Business Status"
+            required
+          />
+          <input type="text" id="name" placeholder="Name" required />
+          <input
+            type="number"
+            step="any"
+            id="rating"
+            placeholder="Rating"
+            required
+          />
+          <input
+            type="text"
+            id="types"
+            placeholder="Types (comma separated)"
+            required
+          />
+          <input
+            type="number"
+            id="user_ratings_total"
+            placeholder="user_ratings_total"
+            required
+          />
+          <input
+            type="text"
+            id="vicinity"
+            placeholder="vicinity"
+            required
+          />
+          <button type="submit">Add Establishment</button>
+        </form>
+      </div>
     </div>
 
     <script>
@@ -60,6 +119,8 @@
           info: false,
           ordering: true,
         });
+
+        var lastSelectedRow = null;
 
         $("#select-all").on("click", function () {
           var rows = table.rows({ search: "applied" }).nodes();
@@ -85,6 +146,8 @@
                     row.name,
                     row.rating,
                     row.types,
+                    row.user_ratings_total,
+                    row.vicinity,
                   ])
                   .draw(false);
               });
@@ -93,6 +156,101 @@
           error: function (error) {
             console.error("Error loading CSV", error);
           },
+        });
+
+        $("#delete-btn").on("click", function () {
+          var rowsToDelete = [];
+          $('#example tbody input[type="checkbox"]:checked').each(function () {
+            var row = $(this).closest("tr");
+            rowsToDelete.push(row);
+          });
+
+          rowsToDelete.forEach(function (row) {
+            table.row(row).remove().draw();
+          });
+        });
+
+        $("#export-btn").on("click", function () {
+          var data = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            data.push([rowData[1], rowData[2]]);
+          });
+
+          var csv = Papa.unparse(data);
+          var hiddenElement = document.createElement("a");
+          hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+          hiddenElement.target = "_blank";
+          hiddenElement.download = "establishments.csv";
+          hiddenElement.click();
+        });
+
+        $("#example tbody").on("click", "input.row-checkbox", function (e) {
+          var row = $(this).closest("tr");
+          var isShiftPressed = e.shiftKey;
+
+          if (isShiftPressed && lastSelectedRow !== null) {
+            var start = table.row(lastSelectedRow).index();
+            var end = table.row(row).index();
+            var rows = table.rows().nodes();
+
+            var min = Math.min(start, end);
+            var max = Math.max(start, end);
+
+            for (var i = min; i <= max; i++) {
+              $('input[type="checkbox"]', rows[i]).prop("checked", true);
+              $(rows[i]).addClass("selected");
+            }
+          } else {
+            if (this.checked) {
+              row.addClass("selected");
+            } else {
+              row.removeClass("selected");
+            }
+          }
+
+          lastSelectedRow = row;
+        });
+
+        $("#add-btn").on("click", function () {
+          $("#addModal").show();
+        });
+
+        $(".close").on("click", function () {
+          $("#addModal").hide();
+        });
+
+        $("#addForm").on("submit", function (e) {
+          e.preventDefault();
+
+          var place_id = $("#place_id").val();
+          var categories = $("#categories").val();
+          var lat = $("#lat").val();
+          var lon = $("#lon").val();
+          var business_status = $("#business_status").val();
+          var name = $("#name").val();
+          var rating = $("#rating").val();
+          var types = $("#types").val();
+          var user_ratings_total = $("#user_ratings_total").val();
+          var vicinity = $("#vicinity").val();
+
+          table.row
+            .add([
+              '<input type="checkbox" class="row-checkbox">',
+              place_id,
+              lat,
+              lon,
+              business_status,
+              name,
+              rating,
+              types,
+              user_ratings_total,
+              vicinity
+            ])
+            .draw(false);
+
+          $("#addModal").hide();
+          $("#addForm")[0].reset();
         });
       });
     </script>
