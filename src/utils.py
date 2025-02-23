@@ -7,7 +7,7 @@ import os
 import re
 from sentence_transformers import SentenceTransformer, util
 import warnings
-from pandas.core.common import SettingWithCopyWarning
+from pandas.errors import SettingWithCopyWarning
 
 def read_file(name, path_file, sep=';'):
     """
