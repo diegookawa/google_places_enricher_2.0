@@ -291,7 +291,7 @@
         })
           .then((response) => response.json())
           .then((data) => {
-            window.location.href = `/coordinates_result?file=${data.file_name}`;
+            window.location.href = '/coordinates_result';
           })
           .catch((error) => console.error("Error:", error));
       }
@@ -320,12 +320,12 @@
       function drawShapes(radius) {
         clearCirclesAndRectangle();
 
-        const bounds = {
-          north: northeastCoord.lat(),
-          south: southwestCoord.lat(),
-          east: northeastCoord.lng(),
-          west: southwestCoord.lng(),
-        };
+        const bounds = { //TODO: Review if northeast and southwest coordinates are correct
+          north: Math.max(northeastCoord.lat(), southwestCoord.lat()),
+          south: Math.min(northeastCoord.lat(), southwestCoord.lat()),
+          east: Math.max(northeastCoord.lng(), southwestCoord.lng()),
+          west: Math.min(northeastCoord.lng(), southwestCoord.lng())
+        }
 
         rectangle = new google.maps.Rectangle({
           strokeColor: "#FF0000",

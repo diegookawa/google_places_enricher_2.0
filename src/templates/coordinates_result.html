@@ -153,24 +153,23 @@
 
         $("#continue-btn").on("click", function () {
           window.location.href = "/categories";
-          // var data = [];
-          // table.rows().every(function () {
-          //   var rowData = this.data();
-          //   data.push([rowData[1], rowData[2]]);
-          // });
-          // $.ajax({
-          //   url: "/update_csv",
-          //   method: "POST",
-          //   contentType: "application/json",
-          //   data: JSON.stringify({ coordinates: data }),
-          //   success: function () {
-          //     alert("CSV updated and Google Places API successfully called!");
-          //     window.location.href = "/categories";
-          //   },
-          //   error: function () {
-          //     alert("An error occurred while processing the request.");
-          //   },
-          // });
+          var data = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            data.push([rowData[1], rowData[2]]);
+          });
+          $.ajax({
+            url: "/update_coordinates_csv",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ coordinates: data }),
+            success: function () {
+              window.location.href = "/categories";
+            },
+            error: function () {
+              alert("An error occurred while updating the CSV file.");
+            },
+          });
         });
       });
     </script>
