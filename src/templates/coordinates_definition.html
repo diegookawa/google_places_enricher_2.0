@@ -291,7 +291,7 @@
         })
           .then((response) => response.json())
           .then((data) => {
-            window.location.href = `/coordinates_result?file=${data.file_name}`;
+            window.location.href = '/coordinates_result';
           })
           .catch((error) => console.error("Error:", error));
       }

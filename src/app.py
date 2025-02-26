@@ -79,9 +79,16 @@ def view_data():
     except Exception as e:
         return f"Erro inesperado: {str(e)}"
 
+# @app.route('/call_google_places_api', methods=['POST'])
+# def call_api():
+#     result = request_google_places()
+#     if "successfully" not in result.lower():
+#         return jsonify({"error": result}), 500
 
-@app.route('/update_csv', methods=['POST'])
-def update_csv():
+#     return jsonify({"message": "CSV updated and Google Places API called successfully!"}), 200
+
+@app.route('/update_coordinates_csv', methods=['POST'])
+def update_coordinates_csv():
     data = request.get_json()
     coordinates = data.get('coordinates')
 
@@ -93,15 +100,50 @@ def update_csv():
             writer.writerow(['lat', 'lon'])
             for coord in coordinates:
                 writer.writerow(coord)
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/get_categories', methods=['GET'])
+def get_categories():
+    categories = []
+    file_path = 'static/data/input/categories_request.csv' 
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'File not found'}), 500 
+
+    try:
+        with open(file_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile, delimiter=';') 
+            next(reader, None) 
+            for row in reader:
+                categories.append(row[0])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    return jsonify({'categories': categories})
+
+@app.route('/update_categories_csv', methods=['POST'])
+def update_categories_csv():
+    data = request.get_json()
+    categories = data.get('categories')
+    print(categories)
+
+    csv_file_path = 'static/data/input/categories_request.csv'
+
+    try:
+        with open(csv_file_path, mode='w', newline='') as file:
+            writer = csv.writer(file, delimiter=';')
+            writer.writerow(['category'])
+            for cat in categories:
+                writer.writerow(cat) 
         
         result = request_google_places()
         if "successfully" not in result.lower():
             return jsonify({"error": result}), 500
 
-        return jsonify({"message": "CSV updated and Google Places API called successfully!"}), 200
-    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/calculate_coordinates", methods=["POST"])
 def calculate_coordinates_route():
