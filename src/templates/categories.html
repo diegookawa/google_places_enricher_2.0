@@ -22,12 +22,6 @@
       <div class="table-description">
         Categories used to retrieve the establishments.
       </div>
-      <div class="upload-container">
-        <form id="csv-upload-form" enctype="multipart/form-data" method="POST">
-          <input type="file" id="csv-file" name="csv-file" accept=".csv" />
-          <button type="submit" class="btn-primary">Upload</button>
-        </form>
-      </div>
       <div class="table-buttons">
         <div class="btn-group">
           <button id="delete-btn" class="btn-outline">Delete</button>
@@ -37,6 +31,7 @@
           </button>
         </div>
       </div>
+      
       <table id="categories-table" class="display">
         <thead>
           <tr>
@@ -46,6 +41,12 @@
         </thead>
         <tbody></tbody>
       </table>
+      <div class="upload-container">
+        <form id="csv-upload-form" enctype="multipart/form-data" method="POST">
+          <input type="file" id="csv-file" name="csv-file" accept=".csv" />
+          <button type="submit" class="btn-primary">Upload</button>
+        </form>
+      </div>
     </div>
 
     <div class="footer-buttons">
