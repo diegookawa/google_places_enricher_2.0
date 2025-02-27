@@ -176,12 +176,10 @@
 
       function setSouthwestCoord(location) {
         southwestCoord = location;
-        if (isMoreNortheast(southwestCoord, northeastCoord)) {
-          swapCoordinates();
-        }
         document.getElementById("southwest-lat").value = southwestCoord.lat();
         document.getElementById("southwest-lng").value = southwestCoord.lng();
-        placeMarker(location);
+        placeMarker(location); //This will be cleared when calling reorderCoordinates()
+        reorderCoordinates();
       }
 
       function setCenterCoord(location) {
@@ -191,12 +189,28 @@
         placeMarker(location);
       }
 
-      function isMoreNortheast(coord1, coord2) {
-        return coord1.lat() > coord2.lat() && coord1.lng() > coord2.lng();
-      }
+      function reorderCoordinates() {
+        oldNortheastCoord = northeastCoord;
+        oldSouthwestCoord = southwestCoord;
 
-      function swapCoordinates() {
-        [northeastCoord, southwestCoord] = [southwestCoord, northeastCoord];
+        northeastCoord = new google.maps.LatLng(
+          Math.max(oldNortheastCoord.lat(), oldSouthwestCoord.lat()),
+          Math.max(oldNortheastCoord.lng(), oldSouthwestCoord.lng())
+        );
+        southwestCoord = new google.maps.LatLng(
+          Math.min(oldNortheastCoord.lat(), oldSouthwestCoord.lat()),
+          Math.min(oldNortheastCoord.lng(), oldSouthwestCoord.lng())
+        );
+
+        // This will rerender the markers on the correct northeast and southwest coordinates,
+        // however it may disrupt the user experience if the user doesn't expect this.  
+        clearMarkers();
+        placeMarker(northeastCoord);
+        placeMarker(southwestCoord);
+        if (centerCoord !== null) {
+          placeMarker(centerCoord);
+        }
+
         updateCoordinateFields();
       }
 
@@ -320,7 +334,7 @@
       function drawShapes(radius) {
         clearCirclesAndRectangle();
 
-        const bounds = { //TODO: Review if northeast and southwest coordinates are correct
+        const bounds = {
           north: Math.max(northeastCoord.lat(), southwestCoord.lat()),
           south: Math.min(northeastCoord.lat(), southwestCoord.lat()),
           east: Math.max(northeastCoord.lng(), southwestCoord.lng()),
