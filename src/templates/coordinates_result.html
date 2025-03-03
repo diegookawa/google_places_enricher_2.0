@@ -24,10 +24,10 @@
         <div class="btn-group">
           <button id="delete-btn" class="btn-outline">Delete</button>
           <button id="export-btn" class="btn-outline">Export</button>
-          <button class="btn-primary" id="add-coordinate-btn">+ Add Coordinate</button>
+          <button class="btn-primary" id="add-new-value-btn">+ Add Coordinate</button>
         </div>
       </div>
-      <table id="example" class="display">
+      <table id="table" class="display">
         <thead>
           <tr>
             <th><input type="checkbox" id="select-all" /></th>
@@ -41,21 +41,25 @@
     <div class="footer-buttons">
       <button id="continue-btn" class="btn-blue">Continue</button>
     </div>
-    <div id="coordinate-modal" class="modal">
+    <div id="main-modal" class="modal">
       <div class="modal-content">
         <span class="close-btn" id="close-modal">&times;</span>
         <h2>Add Coordinate</h2>
-        <label for="lat">Latitude: </label>
+        <label for="lat">Latitude:</label>
         <input type="text" id="lat" placeholder="Enter latitude" required />
-        <label for="lon">Longitude: </label>
+        <label for="lon">Longitude:</label>
         <input type="text" id="lon" placeholder="Enter longitude" required />
-        <button id="submit-coordinate" class="btn-primary">Add Coordinate</button>
-        <button id="cancel-coordinate" class="btn-outline">Cancel</button>
+        <div class="modal-buttons">
+          <button id="submit-btn" class="btn-primary">Add Coordinate</button>
+          <button id="cancel-btn" class="btn-outline">Cancel</button>
+        </div>
       </div>
     </div>
     <script>
+      $("#main-modal").hide();
+
       $(document).ready(function () {
-        var table = $("#example").DataTable({
+        var table = $("#table").DataTable({
           paging: false,
           info: false,
           ordering: true,
@@ -108,7 +112,7 @@
           hiddenElement.click();
         });
 
-        $("#example tbody").on("click", 'input[type="checkbox"]', function (event) {
+        $("#table tbody").on("click", 'input[type="checkbox"]', function (event) {
           var row = $(this).closest("tr");
           var isShiftPressed = event.shiftKey;
           if (isShiftPressed && lastSelectedRow !== null) {
@@ -131,21 +135,21 @@
           lastSelectedRow = row;
         });
 
-        $("#add-coordinate-btn").on("click", function () {
-          $("#coordinate-modal").show();
+        $("#add-new-value-btn").on("click", function () {
+          $("#main-modal").show();
         });
 
-        $("#close-modal, #cancel-coordinate").on("click", function () {
-          $("#coordinate-modal").hide();
+        $("#close-modal, #cancel-btn").on("click", function () {
+          $("#main-modal").hide();
         });
 
-        $("#submit-coordinate").on("click", function () {
+        $("#submit-btn").on("click", function () {
           var lat = $("#lat").val();
           var lon = $("#lon").val();
           if (lat && lon && !isNaN(lat) && !isNaN(lon)) {
             table.row.add(['<input type="checkbox" class="row-checkbox">', lat, lon]).draw(false);
             $("#lat, #lon").val("");
-            $("#coordinate-modal").hide();
+            $("#main-modal").hide();
           } else {
             alert("Please enter valid numeric coordinates.");
           }

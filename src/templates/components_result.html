@@ -26,11 +26,11 @@
         <div class="btn-group">
           <button id="delete-btn" class="btn-outline">Delete</button>
           <button id="export-btn" class="btn-outline">Export</button>
-          <button class="btn-primary" id="add-btn">+ Add establishment</button>
+          <button class="btn-primary" id="add-new-value-btn">+ Add establishment</button>
           <a href="/view_data" class="btn-primary">View Data</a>
         </div>
       </div>
-      <table id="example" class="display">
+      <table id="table" class="display">
         <thead>
           <tr>
             <th><input type="checkbox" id="select-all" /></th>
@@ -49,9 +49,9 @@
       </table>
     </div>
 
-    <div id="addModal" class="modal">
+    <div id="main-modal" class="modal">
       <div class="modal-content">
-        <span class="close">&times;</span>
+        <span class="close-btn">&times;</span>
         <h2>Add Establishment</h2>
         <form id="addForm">
           <input type="text" id="place_id" placeholder="Place ID" required />
@@ -107,14 +107,14 @@
             placeholder="vicinity"
             required
           />
-          <button type="submit">Add Establishment</button>
+          <button type="submit" class="btn-primary" >Add Establishment</button>
         </form>
       </div>
     </div>
 
     <script>
       $(document).ready(function () {
-        var table = $("#example").DataTable({
+        var table = $("#table").DataTable({
           paging: false,
           info: false,
           ordering: true,
@@ -185,7 +185,7 @@
           hiddenElement.click();
         });
 
-        $("#example tbody").on("click", "input.row-checkbox", function (e) {
+        $("#table tbody").on("click", "input.row-checkbox", function (e) {
           var row = $(this).closest("tr");
           var isShiftPressed = e.shiftKey;
 
@@ -212,11 +212,11 @@
           lastSelectedRow = row;
         });
 
-        $("#add-btn").on("click", function () {
+        $("#add-new-value-btn").on("click", function () {
           $("#addModal").show();
         });
 
-        $(".close").on("click", function () {
+        $(".close-modal, #cancel-btn").on("click", function () {
           $("#addModal").hide();
         });
 
