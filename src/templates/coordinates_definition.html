@@ -237,7 +237,7 @@
       function generateRegions() {
         if (!northeastCoord || !southwestCoord || !centerCoord) {
           alert(
-            "Por favor, defina as coordenadas Nordeste, Sudoeste e Central antes de desenhar."
+            "Please define the Northeast, Southwest, and Central coordinates."
           );
           return;
         }
@@ -253,7 +253,7 @@
           isNaN(centerRadius) ||
           centerRadius <= 0
         ) {
-          alert("Por favor, insira valores válidos de raio.");
+          alert("Please enter valid radius values.");
           return;
         }
 
@@ -264,7 +264,7 @@
       function calculateCoordinates() {
         if (!northeastCoord || !southwestCoord || !centerCoord) {
           alert(
-            "Por favor, defina as coordenadas Nordeste, Sudoeste e Central antes de calcular."
+            "Please define the Northeast, Southwest, and Central coordinates."
           );
           return;
         }
@@ -272,7 +272,7 @@
         const radius = parseFloat(document.getElementById("radius").value);
 
         if (isNaN(radius) || radius <= 0) {
-          alert("Por favor, insira um valor válido de raio.");
+          alert("Please enter a valid radius value.");
           return;
         }
 
