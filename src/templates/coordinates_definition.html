@@ -119,6 +119,10 @@
         circles = [],
         rectangle = null;
 
+      document.addEventListener("DOMContentLoaded", function () {
+        hideLoading();
+      });
+
       function initMap() {
         map = new google.maps.Map(document.getElementById("map"), {
           center: CENTER_CITY,
@@ -235,10 +239,13 @@
       }
 
       function generateRegions() {
+        showLoading();
+
         if (!northeastCoord || !southwestCoord || !centerCoord) {
           alert(
             "Please define the Northeast, Southwest, and Central coordinates."
           );
+          hideLoading();
           return;
         }
 
@@ -254,18 +261,23 @@
           centerRadius <= 0
         ) {
           alert("Please enter valid radius values.");
+          hideLoading();
           return;
         }
 
         drawShapes(radius);
         drawCentralCircle(centerRadius);
+        hideLoading();
       }
 
       function calculateCoordinates() {
+        showLoading(); 
+
         if (!northeastCoord || !southwestCoord || !centerCoord) {
           alert(
             "Please define the Northeast, Southwest, and Central coordinates."
           );
+          hideLoading();
           return;
         }
 
@@ -273,6 +285,7 @@
 
         if (isNaN(radius) || radius <= 0) {
           alert("Please enter a valid radius value.");
+          hideLoading();
           return;
         }
 
@@ -291,41 +304,24 @@
         })
           .then((response) => response.json())
           .then((data) => {
-            window.location.href = '/coordinates_result';
+            window.location.href = "/coordinates_result";
+            hideLoading(); 
           })
-          .catch((error) => console.error("Error:", error));
-      }
-
-      function callCalculateCoordinates(radius) {
-        const data = {
-          radius: radius,
-          southwestLat: southwestCoord.lat(),
-          southwestLon: southwestCoord.lng(),
-          northeastLat: northeastCoord.lat(),
-          northeastLon: northeastCoord.lng(),
-        };
-
-        fetch("/calculate_coordinates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            console.log("Resultados calculados:", data);
-          })
-          .catch((error) => console.error("Error:", error));
+          .catch((error) => {
+            console.error("Error:", error);
+            hideLoading(); 
+          });
       }
 
       function drawShapes(radius) {
         clearCirclesAndRectangle();
 
-        const bounds = { //TODO: Review if northeast and southwest coordinates are correct
+        const bounds = {
           north: Math.max(northeastCoord.lat(), southwestCoord.lat()),
           south: Math.min(northeastCoord.lat(), southwestCoord.lat()),
           east: Math.max(northeastCoord.lng(), southwestCoord.lng()),
-          west: Math.min(northeastCoord.lng(), southwestCoord.lng())
-        }
+          west: Math.min(northeastCoord.lng(), southwestCoord.lng()),
+        };
 
         rectangle = new google.maps.Rectangle({
           strokeColor: "#FF0000",
@@ -409,7 +405,25 @@
         southwestCoord = null;
         centerCoord = null;
       }
-    </script>
-  </body>
 
+      function showLoading() {
+        document.getElementById("loading-modal").style.display = "flex";
+        document.body.style.overflow = "hidden";
+      }
+
+      function hideLoading() {
+        document.getElementById("loading-modal").style.display = "none";
+        document.body.style.overflow = "auto";
+      }
+    </script>
+    <div id="loading-modal">
+      <div class="loading-content">
+        <img
+          src="{{ url_for('static', filename='data/images/loading.webp') }}"
+          alt="Loading..."
+        />
+        <p>Loading, please wait...</p>
+      </div>
+    </div>
+  </body>
 </html>
