@@ -248,7 +248,6 @@ body {
     flex: 1;
   }
   
-  /* Botões */
   .modal-buttons {
     display: flex;
     justify-content: flex-end;
@@ -276,7 +275,7 @@ body {
     width: 80%;
     max-width: 500px;
     position: relative;
-    border-radius: 8px;  /* Canto arredondado no modal */
+    border-radius: 8px;
   }
   
   .close-btn {

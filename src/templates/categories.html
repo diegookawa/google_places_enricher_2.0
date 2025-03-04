@@ -58,15 +58,15 @@
 
       $(document).ready(function () {
         var table = $("#table").DataTable({
-          paging: true, // Enable pagination
-          pageLength: 15, // Show 15 items per page
-          lengthChange: false, // Disable changing the number of rows per page
-          info: false, // Disable information text about number of entries
-          ordering: true, // Enable column ordering
-          dom: "ft<'row'<'col-sm-12'p>>", // Keep pagination controls at the bottom
+          paging: true,
+          pageLength: 12,
+          lengthChange: false, 
+          info: false,
+          ordering: true, 
+          dom: "ft<'row'<'col-sm-12'p>>", 
         });
 
-        var lastSelectedRow = null; // Guarda a última linha selecionada
+        var lastSelectedRow = null;
 
         function loadCategories() {
           $.ajax({
@@ -149,7 +149,6 @@
           hiddenElement.click();
         });
 
-        // Seleção com Shift
         $("#table tbody").on(
           "click",
           'input[type="checkbox"]',
