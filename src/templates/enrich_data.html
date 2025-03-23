@@ -42,7 +42,7 @@
                     <label for="uploadDataset">Or Upload a Dataset (CSV)</label>
                     <input type="file" id="uploadDataset" name="uploadDataset" accept=".csv">
                 </div>
-                <!-- TODO: Add a link back to the main page. -->
+                <!-- TODO: Add a link here back to the main page. -->
                 <p>If you don't have data yet, please return to the extract data from Google Places step.</p>
             </div>
 
@@ -53,6 +53,7 @@
                     <div class="btn-group">
                         <button id="delete-btn" class="btn-outline">Delete</button>
                         <button id="export-btn" class="btn-outline">Export</button>
+                        <button id="edit-btn" class="btn-outline">Edit</button>
                         <button class="btn-primary" id="add-new-value-btn">+ Add Category</button>
                     </div>
                 </div>
@@ -70,6 +71,19 @@
                         <input type="file" id="csv-file" name="csv-file" accept=".csv" />
                         <button type="button" class="btn-primary" id="load-btn">Load</button>
                     </form>
+                </div>
+            </div>
+
+            <!-- Modal for editing and adding -->
+            <div id="category-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn" id="close-category-modal">&times;</span>
+                    <h2 id="modal-title">Add Category</h2>
+                    <input type="text" id="category-input" placeholder="Category name">
+                    <div class="modal-buttons">
+                        <button class="btn-primary" id="save-category-btn">Save</button>
+                        <button class="btn-outline" id="cancel-category-btn">Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -178,10 +192,10 @@
             });
 
             $("#add-new-value-btn").on("click", function () {
-                var newCategory = prompt("Enter new category:");
-                if (newCategory) {
-                    table.row.add(['<input type="checkbox" class="row-checkbox">', newCategory]).draw(false);
-                }
+                $("#modal-title").text("Add Category");
+                $("#category-input").val("");
+                isEditing = false;
+                $("#category-modal").show();
             });
 
             $("#load-btn").on("click", function () {
@@ -203,6 +217,55 @@
                         }
                     });
                 }
+            });
+
+            let editingRow = null;
+            let isEditing = false;
+
+            $("#edit-btn").on("click", function() {
+                const checkedRows = table.rows().nodes().toArray().filter(row => 
+                    $('input[type="checkbox"]', row).prop('checked')
+                );
+
+                if (checkedRows.length !== 1) {
+                    alert("Please select exactly one category to edit");
+                    return;
+                }
+
+                editingRow = $(checkedRows[0]);
+                const currentCategory = table.row(editingRow).data()[1];
+                $("#modal-title").text("Edit Category");
+                $("#category-input").val(currentCategory);
+                isEditing = true;
+                $("#category-modal").show();
+            });
+
+            $("#close-category-modal, #cancel-category-btn").on("click", function() {
+                $("#category-modal").hide();
+                editingRow = null;
+            });
+
+            $("#save-category-btn").on("click", function() {
+                const categoryName = $("#category-input").val().trim();
+                if (!categoryName) {
+                    alert("Category name cannot be empty");
+                    return;
+                }
+
+                if (isEditing && editingRow) {
+                    table.row(editingRow).data([
+                        '<input type="checkbox" class="row-checkbox">',
+                        categoryName
+                    ]).draw();
+                    editingRow = null;
+                } else {
+                    table.row.add([
+                        '<input type="checkbox" class="row-checkbox">',
+                        categoryName
+                    ]).draw(false);
+                }
+
+                $("#category-modal").hide();
             });
         });
     </script>
