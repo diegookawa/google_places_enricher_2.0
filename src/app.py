@@ -8,6 +8,7 @@ import ast
 import pandas as pd
 import csv
 import os
+import argparse
 
 app = Flask(__name__)
 
@@ -207,4 +208,8 @@ def categories():
     return render_template('categories.html')
 
 if __name__ == "__main__":
-    app.run()
+    parser = argparse.ArgumentParser(description='Run the Flask application')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run the application on')
+    args = parser.parse_args()
+    
+    app.run(host='127.0.0.1', port=args.port)
