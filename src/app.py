@@ -2,8 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from dotenv import load_dotenv, set_key
 from flows import calculate_coordinates, request_google_places
 from werkzeug.utils import secure_filename
-from collections import Counter
-import ast
 
 import pandas as pd
 import csv
@@ -205,6 +203,47 @@ def categories():
         else:
             return jsonify({'error': 'Invalid file format'}), 400
     return render_template('categories.html')
+
+@app.route('/enrich_data')
+def enrich_data():
+    return render_template('enrich_data.html')
+
+@app.route('/get_enrichment_categories', methods=['GET'])
+def get_enrichment_categories():
+    categories = []
+    file_path = 'static/data/input/enrichment_categories.csv'
+    if not os.path.exists(file_path):
+        return jsonify({'categories': categories})
+
+    try:
+        with open(file_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile, delimiter=';')
+            next(reader, None)
+            for row in reader:
+                categories.append(row[0])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    return jsonify({'categories': categories})
+
+@app.route('/enrichment_categories', methods=['POST'])
+def enrichment_categories():
+    data = request.get_json()
+    categories = data.get('categories')
+
+    csv_file_path = 'static/data/input/enrichment_categories.csv'
+
+    try:
+        with open(csv_file_path, mode='w', newline='') as file:
+            writer = csv.writer(file, delimiter=';')
+            writer.writerow(['category'])
+            for cat in categories:
+                writer.writerow([cat['category']])
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    return jsonify({'message': 'Categories updated successfully.'}), 200
 
 if __name__ == "__main__":
     app.run()
