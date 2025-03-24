@@ -245,5 +245,47 @@ def enrichment_categories():
 
     return jsonify({'message': 'Categories updated successfully.'}), 200
 
+@app.route('/get_available_datasets', methods=['GET'])
+def get_available_datasets():
+    datasets = []
+    output_dir = 'static/data/output'
+    try:
+        for file in os.listdir(output_dir):
+            if file.endswith('.csv'):
+                datasets.append({
+                    'name': file,
+                    'path': os.path.join(output_dir, file)
+                })
+        return jsonify({'datasets': datasets})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/upload_dataset', methods=['POST'])
+def upload_dataset():
+    if 'dataset' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['dataset']
+    if file and allowed_file(file.filename):
+        try:
+            filename = secure_filename(file.filename)
+            save_path = os.path.join('static/data/output', filename)
+            file.save(save_path)
+            
+            # TODO: Maybe don't require all columns to be present
+            # Validate file structure
+            df = pd.read_csv(save_path)
+            required_columns = {'place_id', 'categories', 'lat', 'lon', 'business_status', 
+                            'name', 'price_level', 'rating', 'types', 'user_ratings_total', 'vicinity'}
+            missing_columns = required_columns - set(df.columns)
+            if missing_columns:
+                os.remove(save_path)  # Remove invalid file
+                return jsonify({'error': f'Missing required columns: {missing_columns}'}), 400
+                
+            return jsonify({'message': 'Dataset uploaded successfully', 'filename': filename})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    return jsonify({'error': 'Invalid file format'}), 400
+
 if __name__ == "__main__":
     app.run()

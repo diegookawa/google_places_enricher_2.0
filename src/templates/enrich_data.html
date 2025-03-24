@@ -26,24 +26,21 @@
     <div class="container">
         <div class="content">
             <h1>Enrich Google Places data</h1>
-            <!-- TODO: Implement in the backend. -->
             <!-- Component 1: Pick existing dataset to enrich -->
             <div class="table-container">
                 <div class="form-group">
                     <label for="existingDataset">Select Existing Dataset</label>
                     <select id="existingDataset" name="existingDataset" onchange="toggleUploadInput()">
-                        <option value="dataset1">Dataset 1</option>
-                        <option value="dataset2">Dataset 2</option>
+                        <option value="">Select a dataset...</option>
                         <option value="upload">Upload New Dataset</option>
-                        <!-- Add more options as needed -->
                     </select>
                 </div>
                 <div class="form-group" id="uploadDatasetGroup" style="display: none;">
-                    <label for="uploadDataset">Or Upload a Dataset (CSV)</label>
+                    <label for="uploadDataset">Upload a Dataset (CSV)</label>
                     <input type="file" id="uploadDataset" name="uploadDataset" accept=".csv">
+                    <div id="uploadError" class="error-message" style="display: none; color: red; margin-top: 10px;"></div>
                 </div>
-                <!-- TODO: Add a link here back to the main page. -->
-                <p>If you don't have data yet, please return to the extract data from Google Places step.</p>
+                <p>Press return to the main page if you haven't already downloaded data from Google Places<a href="/" class="btn-outline">Return to main page</a></p>
             </div>
 
             <!-- Component 2: Table for categories -->
@@ -95,6 +92,26 @@
 
     <script>
         var table;
+        
+        function loadExistingDatasets() {
+            $.ajax({
+                url: "/get_available_datasets",
+                method: "GET",
+                success: function(response) {
+                    var select = $("#existingDataset");
+                    select.find('option').not(':first').not(':last').remove();
+                    response.datasets.forEach(function(dataset) {
+                        select.find('option:last').before($('<option>', {
+                            value: dataset.path,
+                            text: dataset.name
+                        }));
+                    });
+                },
+                error: function(xhr) {
+                    console.error("Error loading datasets:", xhr.responseText);
+                }
+            });
+        }
 
         function toggleUploadInput() {
             var select = document.getElementById('existingDataset');
@@ -104,6 +121,28 @@
             } else {
                 uploadGroup.style.display = 'none';
             }
+        }
+
+        function uploadDataset(file) {
+            var formData = new FormData();
+            formData.append('dataset', file);
+
+            $.ajax({
+                url: '/upload_dataset',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    $('#uploadError').hide();
+                    loadExistingDatasets();
+                    alert('Dataset uploaded successfully!');
+                },
+                error: function(xhr) {
+                    var error = xhr.responseJSON ? xhr.responseJSON.error : 'Upload failed';
+                    $('#uploadError').text(error).show();
+                }
+            });
         }
 
         function loadCategories() {
@@ -134,6 +173,7 @@
                 dom: "ft<'row'<'col-sm-12'p>>",
             });
 
+            loadExistingDatasets();
             loadCategories();
 
             $("#select-all").on("click", function () {
@@ -266,6 +306,12 @@
                 }
 
                 $("#category-modal").hide();
+            });
+
+            $('#uploadDataset').on('change', function(e) {
+                if (this.files && this.files[0]) {
+                    uploadDataset(this.files[0]);
+                }
             });
         });
     </script>
