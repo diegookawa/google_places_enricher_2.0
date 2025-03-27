@@ -26,7 +26,9 @@
         <div class="btn-group">
           <button id="delete-btn" class="btn-outline">Delete</button>
           <button id="export-btn" class="btn-outline">Export</button>
-          <button class="btn-primary" id="add-new-value-btn">+ Add establishment</button>
+          <button class="btn-primary" id="add-new-value-btn">
+            + Add establishment
+          </button>
           <a href="/view_data" class="btn-primary">View Data</a>
         </div>
       </div>
@@ -101,13 +103,8 @@
             placeholder="user_ratings_total"
             required
           />
-          <input
-            type="text"
-            id="vicinity"
-            placeholder="vicinity"
-            required
-          />
-          <button type="submit" class="btn-primary" >Add Establishment</button>
+          <input type="text" id="vicinity" placeholder="vicinity" required />
+          <button type="submit" class="btn-primary">Add Establishment</button>
         </form>
       </div>
     </div>
@@ -141,20 +138,32 @@
               console.error("No data found");
             } else {
               data.forEach(function (row) {
-                table.row
-                  .add([
-                    '<input type="checkbox" class="row-checkbox">',
-                    row.place_id,
-                    row.lat,
-                    row.lon,
-                    row.business_status,
-                    row.name,
-                    row.rating,
-                    row.types,
-                    row.user_ratings_total,
-                    row.vicinity,
-                  ])
-                  .draw(false);
+                if (
+                  row.place_id &&
+                  row.lat &&
+                  row.lon &&
+                  row.business_status &&
+                  row.name &&
+                  row.rating &&
+                  row.types &&
+                  row.user_ratings_total &&
+                  row.vicinity
+                ) {
+                  table.row
+                    .add([
+                      '<input type="checkbox" class="row-checkbox">',
+                      row.place_id,
+                      row.lat,
+                      row.lon,
+                      row.business_status,
+                      row.name,
+                      row.rating,
+                      row.types,
+                      row.user_ratings_total,
+                      row.vicinity,
+                    ])
+                    .draw(false);
+                }
               });
             }
           },
@@ -165,7 +174,7 @@
 
         $("#delete-btn").on("click", function () {
           var rowsToDelete = [];
-          $('#example tbody input[type="checkbox"]:checked').each(function () {
+          $('#table tbody input[type="checkbox"]:checked').each(function () {
             var row = $(this).closest("tr");
             rowsToDelete.push(row);
           });
@@ -250,7 +259,7 @@
               rating,
               types,
               user_ratings_total,
-              vicinity
+              vicinity,
             ])
             .draw(false);
 

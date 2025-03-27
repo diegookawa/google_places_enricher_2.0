@@ -130,7 +130,7 @@ def update_categories_and_process_data():
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['category'])
             for cat in categories:
-                writer.writerow(cat) 
+                writer.writerow([cat]) 
 
         result = request_google_places()
         if not result:
