@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Add Categories</title>
+    <title>Categories</title>
     <link
       rel="stylesheet"
       href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"
@@ -53,9 +53,30 @@
       <button id="continue-btn" class="btn-primary">Process Data</button>
     </div>
 
-    <script>
-      $("#main-modal").hide();
+    <div id="loading-modal" style="display: none;">
+      <div class="loading-content">
+        <img
+          src="{{ url_for('static', filename='data/images/loading.webp') }}"
+          alt="Loading..."
+        />
+        <p>Loading, please wait...</p>
+      </div>
+    </div>
 
+    <div id="main-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close-btn" id="close-modal">&times;</span>
+        <h2>Add Category</h2>
+        <label for="category">Category:</label>
+        <input type="text" id="category" placeholder="Enter category name" required />
+        <div class="modal-buttons">
+          <button id="submit-btn" class="btn-primary">Add Category</button>
+          <button id="cancel-btn" class="btn-outline">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
       $(document).ready(function () {
         var table = $("#table").DataTable({
           paging: true,
@@ -66,7 +87,13 @@
           dom: "ft<'row'<'col-sm-12'p>>", 
         });
 
-        var lastSelectedRow = null;
+        function showLoading() {
+          $("#loading-modal").show();
+        }
+
+        function hideLoading() {
+          $("#loading-modal").hide();
+        }
 
         function loadCategories() {
           $.ajax({
@@ -93,41 +120,54 @@
 
         loadCategories();
 
-        $("#select-all").on("click", function () {
-          var rows = table.rows({ search: "applied" }).nodes();
-          $('input[type="checkbox"]', rows).prop("checked", this.checked);
-          if (this.checked) {
-            $(rows).addClass("selected");
+        $("#add-new-value-btn").on("click", function () {
+          $("#main-modal").show();
+        });
+
+        $("#close-modal, #cancel-btn").on("click", function () {
+          $("#main-modal").hide();
+        });
+
+        $("#submit-btn").on("click", function () {
+          var category = $("#category").val().trim();
+          if (category) {
+            table.row.add([
+              '<input type="checkbox" class="row-checkbox">',
+              category
+            ]).draw(false);
+            $("#category").val("");
+            $("#main-modal").hide();
           } else {
-            $(rows).removeClass("selected");
+            alert("Please enter a valid category name.");
           }
         });
 
-        $("#csv-upload-form").on("submit", function (event) {
-          event.preventDefault();
-          var formData = new FormData(this);
+        $("#continue-btn").on("click", function () {
+          showLoading();
+          var data = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            data.push([rowData[1]]);
+          });
           $.ajax({
-            url: "/categories",
-            type: "POST",
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function (response) {
-              var data = response.categories;
-              table.clear();
-              data.forEach(function (category) {
-                table.row
-                  .add([
-                    '<input type="checkbox" class="row-checkbox">',
-                    category,
-                  ])
-                  .draw(false);
-              });
+            url: "/update_categories_and_process_data",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ categories: data }),
+            success: function () {
+              hideLoading();
+              window.location.href = "/components_result";
             },
             error: function () {
-              alert("Upload error.");
+              hideLoading();
+              alert("An error occurred while updating the CSV file.");
             },
           });
+        });
+
+        $("#select-all").on("click", function () {
+          var rows = table.rows({ search: "applied" }).nodes();
+          $('input[type="checkbox"]', rows).prop("checked", this.checked);
         });
 
         $("#delete-btn").on("click", function () {
@@ -140,14 +180,15 @@
             var rowData = this.data();
             data.push([rowData[1]]);
           });
-
-          var csv = Papa.unparse({ fields: ["Category"], data: data });
+          var csv = Papa.unparse(data);
           var hiddenElement = document.createElement("a");
           hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
           hiddenElement.target = "_blank";
-          hiddenElement.download = "categories.csv";
+          hiddenElement.download = "categories_data.csv";
           hiddenElement.click();
         });
+
+        var lastSelectedRow = null;
 
         $("#table tbody").on(
           "click",
@@ -155,14 +196,12 @@
           function (event) {
             var row = $(this).closest("tr");
             var isShiftPressed = event.shiftKey;
-
             if (isShiftPressed && lastSelectedRow !== null) {
               var start = table.row(lastSelectedRow).index();
               var end = table.row(row).index();
               var rows = table.rows().nodes();
               var min = Math.min(start, end);
               var max = Math.max(start, end);
-
               for (var i = min; i <= max; i++) {
                 $('input[type="checkbox"]', rows[i]).prop("checked", true);
                 $(rows[i]).addClass("selected");
@@ -177,27 +216,6 @@
             lastSelectedRow = row;
           }
         );
-
-        $("#continue-btn").on("click", function () {
-          var data = [];
-          table.rows().every(function () {
-            var rowData = this.data();
-            data.push([rowData[1]]);
-          });
-          $.ajax({
-            url: "/update_categories_csv",
-            method: "POST",
-            contentType: "application/json",
-            data: JSON.stringify({ categories: data }),
-            success: function () {
-              alert("API CALLED.");
-              window.location.href = "/components_result";
-            },
-            error: function () {
-              alert("An error occurred while updating the CSV file.");
-            },
-          });
-        });
       });
     </script>
   </body>
