@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 import pandas as pd
 import csv
 import os
+import argparse
 
 app = Flask(__name__)
 
@@ -29,15 +30,15 @@ def view_data():
         try:
             data = pd.read_csv(csv_path)
         except FileNotFoundError:
-            return f"Erro: Arquivo {csv_path} não encontrado."
+            return f"Error: File {csv_path} not found."
         except Exception as e:
-            return f"Erro ao ler o arquivo CSV: {str(e)}"
+            return f"Error reading the CSV file: {str(e)}"
 
         required_columns = {'place_id', 'categories', 'lat', 'lon', 'business_status', 
                             'name', 'price_level', 'rating', 'types', 'user_ratings_total', 'vicinity'}
         missing_columns = required_columns - set(data.columns)
         if missing_columns:
-            return f"Erro: Colunas ausentes no CSV: {missing_columns}"
+            return f"Error: Missing columns in CSV: {missing_columns}"
 
         data.fillna({
             "rating": 0,
@@ -75,15 +76,7 @@ def view_data():
         )
 
     except Exception as e:
-        return f"Erro inesperado: {str(e)}"
-
-# @app.route('/call_google_places_api', methods=['POST'])
-# def call_api():
-#     result = request_google_places()
-#     if "successfully" not in result.lower():
-#         return jsonify({"error": result}), 500
-
-#     return jsonify({"message": "CSV updated and Google Places API called successfully!"}), 200
+        return f"Unexpected error: {str(e)}"
 
 @app.route('/update_coordinates_csv', methods=['POST'])
 def update_coordinates_csv():
@@ -120,11 +113,13 @@ def get_categories():
 
     return jsonify({'categories': categories})
 
-@app.route('/update_categories_csv', methods=['POST'])
-def update_categories_csv():
+@app.route('/update_categories_and_process_data', methods=['POST'])
+def update_categories_and_process_data():
     data = request.get_json()
     categories = data.get('categories')
-    print(categories)
+
+    if not categories:
+        return jsonify({"error": "No categories provided"}), 400 
 
     csv_file_path = 'static/data/input/categories_request.csv'
 
@@ -134,14 +129,17 @@ def update_categories_csv():
             writer.writerow(['category'])
             for cat in categories:
                 writer.writerow(cat) 
-        
+
         result = request_google_places()
+        if not result:
+            return jsonify({"error": "Google Places API returned no response"}), 500
         if "successfully" not in result.lower():
             return jsonify({"error": result}), 500
 
+        return jsonify({"message": "CSV updated successfully"}), 200 
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/calculate_coordinates", methods=["POST"])
 def calculate_coordinates_route():
@@ -288,4 +286,8 @@ def upload_dataset():
     return jsonify({'error': 'Invalid file format'}), 400
 
 if __name__ == "__main__":
-    app.run()
+    parser = argparse.ArgumentParser(description='Run the Flask application')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run the application on')
+    args = parser.parse_args()
+    
+    app.run(host='127.0.0.1', port=args.port)

@@ -26,7 +26,9 @@
         <div class="btn-group">
           <button id="delete-btn" class="btn-outline">Delete</button>
           <button id="export-btn" class="btn-outline">Export</button>
-          <button class="btn-primary" id="add-new-value-btn">+ Add establishment</button>
+          <button class="btn-primary" id="add-new-value-btn">
+            + Add establishment
+          </button>
           <a href="/view_data" class="btn-primary">View Data</a>
         </div>
       </div>
@@ -43,6 +45,8 @@
             <th>types</th>
             <th>user_ratings_total</th>
             <th>vicinity</th>
+            <th>categories</th>
+            <th>price_level</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -54,13 +58,18 @@
         <span class="close-btn">&times;</span>
         <h2>Add Establishment</h2>
         <form id="addForm">
+          <label for="place_id">Place ID</label>
           <input type="text" id="place_id" placeholder="Place ID" required />
+
+          <label for="categories">Categories (comma separated)</label>
           <input
             type="text"
             id="categories"
             placeholder="Categories (comma separated)"
             required
           />
+
+          <label for="lat">Latitude</label>
           <input
             type="number"
             step="any"
@@ -68,6 +77,8 @@
             placeholder="Latitude"
             required
           />
+
+          <label for="lon">Longitude</label>
           <input
             type="number"
             step="any"
@@ -75,13 +86,28 @@
             placeholder="Longitude"
             required
           />
+
+          <label for="business_status">Business Status</label>
           <input
             type="text"
             id="business_status"
             placeholder="Business Status"
             required
           />
+
+          <label for="name">Name</label>
           <input type="text" id="name" placeholder="Name" required />
+
+          <label for="price_level">Price Level</label>
+          <input
+            type="number"
+            step="any"
+            id="price_level"
+            placeholder="Price Level"
+            required
+          />
+
+          <label for="rating">Rating</label>
           <input
             type="number"
             step="any"
@@ -89,25 +115,32 @@
             placeholder="Rating"
             required
           />
+
+          <label for="types">Types (comma separated)</label>
           <input
             type="text"
             id="types"
             placeholder="Types (comma separated)"
             required
           />
+
+          <label for="user_ratings_total">User Ratings Total</label>
           <input
             type="number"
             id="user_ratings_total"
-            placeholder="user_ratings_total"
+            placeholder="User Ratings Total"
             required
           />
-          <input
-            type="text"
-            id="vicinity"
-            placeholder="vicinity"
-            required
-          />
-          <button type="submit" class="btn-primary" >Add Establishment</button>
+
+          <label for="vicinity">Vicinity</label>
+          <input type="text" id="vicinity" placeholder="Vicinity" required />
+
+          <div class="modal-buttons">
+            <button type="submit" class="btn-primary">Add Establishment</button>
+            <button type="button" id="cancel-btn" class="btn-outline">
+              Cancel
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -141,20 +174,36 @@
               console.error("No data found");
             } else {
               data.forEach(function (row) {
-                table.row
-                  .add([
-                    '<input type="checkbox" class="row-checkbox">',
-                    row.place_id,
-                    row.lat,
-                    row.lon,
-                    row.business_status,
-                    row.name,
-                    row.rating,
-                    row.types,
-                    row.user_ratings_total,
-                    row.vicinity,
-                  ])
-                  .draw(false);
+                if (
+                  row.place_id &&
+                  row.lat &&
+                  row.lon &&
+                  row.business_status &&
+                  row.name &&
+                  row.rating &&
+                  row.types &&
+                  row.user_ratings_total &&
+                  row.vicinity &&
+                  row.categories && // Verifica a existência de categories
+                  row.price_level // Verifica a existência de price_level
+                ) {
+                  table.row
+                    .add([
+                      '<input type="checkbox" class="row-checkbox">',
+                      row.place_id,
+                      row.lat,
+                      row.lon,
+                      row.business_status,
+                      row.name,
+                      row.rating,
+                      row.types,
+                      row.user_ratings_total,
+                      row.vicinity,
+                      row.categories, // Adiciona categories à linha
+                      row.price_level, // Adiciona price_level à linha
+                    ])
+                    .draw(false);
+                }
               });
             }
           },
@@ -165,7 +214,7 @@
 
         $("#delete-btn").on("click", function () {
           var rowsToDelete = [];
-          $('#example tbody input[type="checkbox"]:checked').each(function () {
+          $('#table tbody input[type="checkbox"]:checked').each(function () {
             var row = $(this).closest("tr");
             rowsToDelete.push(row);
           });
@@ -177,12 +226,22 @@
 
         $("#export-btn").on("click", function () {
           var data = [];
+
+          var headers = [];
+          $("#table thead th").each(function (index) {
+            if (index !== 0) {
+              headers.push($(this).text());
+            }
+          });
+          data.push(headers);
+
           table.rows().every(function () {
-            var rowData = this.data();
-            data.push([rowData[1], rowData[2]]);
+            var rowData = this.data().slice(1);
+            data.push(rowData);
           });
 
           var csv = Papa.unparse(data);
+
           var hiddenElement = document.createElement("a");
           hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
           hiddenElement.target = "_blank";
@@ -218,11 +277,15 @@
         });
 
         $("#add-new-value-btn").on("click", function () {
-          $("#addModal").show();
+          $("#main-modal").show();
         });
 
-        $(".close-modal, #cancel-btn").on("click", function () {
-          $("#addModal").hide();
+        $(".close-btn").on("click", function () {
+          $("#main-modal").hide();
+        });
+
+        $("#cancel-btn").on("click", function () {
+          $("#main-modal").hide();
         });
 
         $("#addForm").on("submit", function (e) {
@@ -234,6 +297,7 @@
           var lon = $("#lon").val();
           var business_status = $("#business_status").val();
           var name = $("#name").val();
+          var price_level = $("#price_level").val();
           var rating = $("#rating").val();
           var types = $("#types").val();
           var user_ratings_total = $("#user_ratings_total").val();
@@ -250,11 +314,13 @@
               rating,
               types,
               user_ratings_total,
-              vicinity
+              vicinity,
+              categories,
+              price_level,
             ])
             .draw(false);
 
-          $("#addModal").hide();
+          $("#main-modal").hide();
           $("#addForm")[0].reset();
         });
       });
