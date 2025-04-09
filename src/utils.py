@@ -395,11 +395,11 @@ def create_estab_phrase(df_estab):
 
     return df_categories_estab_phrases
 
-def calculate_similarity_sentences(sentences_estab, sentences_yelp):
+def calculate_similarity_sentences(sentences_estab, sentences_yelp, top_n=20):
     """
     Calculates the semantic textual similarity between the Yelp sentences and the establishments sentences, 
     using a Sentence Transformer model to generate the embeddings and the cosine similarity to calculate the distance between the vectors.
-    And retrieves for each establishment sentence, the Yelp sentence with the highest score.
+    And retrieves for each establishment sentence, the top N Yelp sentences with highest scores.
 
     Parameters
     ----------
@@ -407,6 +407,8 @@ def calculate_similarity_sentences(sentences_estab, sentences_yelp):
         The establishments sentences.
     sentences_yelp: pandas.core.series.Series
         The Yelp sentences.
+    top_n: int, optional (default=20)
+        Number of top matches to return for each sentence.
 
     Raises
     ------
@@ -414,8 +416,11 @@ def calculate_similarity_sentences(sentences_estab, sentences_yelp):
 
     Returns
     -------
-    pandas.core.frame.DataFrame
-        The establishments sentences combined with the best-scoring Yelp sentences.
+    list of dicts
+        For each establishment sentence, returns a dict with the sentence and its top matches.
+        Each dict contains:
+        - 'sentence': The original establishment sentence
+        - 'matches': List of dicts with {'text': yelp_sentence, 'score': similarity_score}
     """
 
     model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -427,30 +432,20 @@ def calculate_similarity_sentences(sentences_estab, sentences_yelp):
 
     rows = len(sentences_estab)
     columns = len(sentences_yelp)
-    pairs_final = []
+    
+    results = []
     for i in range(rows):
         pairs = []
         for j in range(columns):
-            pairs.append({'index': [i, j], 'score': cosine_scores[i][j]})
-        pairs_final.append(pairs)
+            pairs.append({'index': j, 'text': sentences_yelp[j], 'score': float(cosine_scores[i][j])})
+        
+        # Sort by score in descending order and take top_n
+        pairs.sort(key=lambda x: x['score'], reverse=True)
+        top_matches = pairs[:top_n]
+        
+        results.append({
+            'sentence': sentences_estab[i],
+            'matches': [{'text': match['text'], 'score': round(match['score'], 4)} for match in top_matches]
+        })
 
-    best_scores = []
-    for pairs in pairs_final:
-        pairs = sorted(pairs, key=lambda x: x['score'], reverse=True)
-        best_scores.append(pairs[0])
-
-    phrase_estab = []
-    phrase_yelp = []
-    score = []
-    for pair in best_scores:
-        i, j = pair['index']
-        phrase_estab.append(sentences_estab[i])
-        phrase_yelp.append(sentences_yelp[j])
-        score.append(round(float(pair['score']), 4))
-
-    df_score = pd.DataFrame()
-    df_score['phrase_establishment'] = phrase_estab
-    df_score['phrase_yelp'] = phrase_yelp
-    df_score['score'] = score
-
-    return df_score
+    return results

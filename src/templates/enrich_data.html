@@ -87,7 +87,7 @@
     </div>
 
     <div class="submit-container">
-        <button type="submit" class="btn-primary">Submit</button>
+        <button type="button" id="submit-btn" class="btn-primary">Submit</button>
     </div>
 
     <script>
@@ -312,6 +312,42 @@
                 if (this.files && this.files[0]) {
                     uploadDataset(this.files[0]);
                 }
+            });
+
+            $("#submit-btn").on("click", function() {
+                // Get the selected dataset
+                const selectedDataset = $("#existingDataset").val();
+                if (!selectedDataset) {
+                    alert("Please select a dataset to enrich");
+                    return;
+                }
+
+                // Get all categories from the table
+                const categories = [];
+                table.rows().every(function() {
+                    const rowData = this.data();
+                    categories.push({ category: rowData[1] });
+                });
+
+                if (categories.length === 0) {
+                    alert("Please add at least one category");
+                    return;
+                }
+
+                // Save categories and redirect to matching page
+                $.ajax({
+                    url: "/enrichment_categories",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({ categories: categories }),
+                    success: function(response) {
+                        // Redirect to the category matching page
+                        window.location.href = "/match_categories";
+                    },
+                    error: function(xhr) {
+                        alert("Error saving categories: " + xhr.responseText);
+                    }
+                });
             });
         });
     </script>

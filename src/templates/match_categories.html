@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Match Categories</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='tables.css') }}"
+    />
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <style>
+      .match-dropdown {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+      .see-more-option {
+        color: #666;
+        font-style: italic;
+      }
+      .table-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .table-description {
+        margin-bottom: 20px;
+        color: #666;
+      }
+      .threshold-controls {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        display: none;
+      }
+      .threshold-slider {
+        width: 100%;
+        margin: 10px 0;
+      }
+      .threshold-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .threshold-label {
+        width: 120px;
+        font-weight: bold;
+      }
+      .threshold-value {
+        width: 50px;
+        text-align: center;
+        margin: 0 10px;
+      }
+      .settings-toggle {
+        cursor: pointer;
+        color: #007bff;
+        display: inline-block;
+        margin-left: 10px;
+      }
+      .settings-toggle:hover {
+        text-decoration: underline;
+      }
+      .footer-buttons {
+        margin-top: 20px;
+        text-align: center;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-primary:hover {
+        background-color: #0056b3;
+      }
+      .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+      .btn-secondary:hover {
+        background-color: #5a6268;
+      }
+      /* Ranking colors */
+      .rank-1 {
+        background-color: #91db57 !important;
+        font-weight: bold;
+      }
+      .rank-2 {
+        background-color: #57db80 !important;
+      }
+      .rank-3 {
+        background-color: #dbc257 !important;
+      }
+      .rank-4 {
+        background-color: #db5f57 !important;
+      }
+      /* Score indicator */
+      .score-indicator {
+        float: right;
+        opacity: 0.7;
+        font-size: 0.85em;
+      }
+      /* Modal styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+      }
+      .modal-content {
+        background-color: #fff;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 1000px;
+        position: relative;
+      }
+      .close-btn {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .close-btn:hover {
+        color: #000;
+      }
+      .modal-title {
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: #333;
+      }
+      .modal-footer {
+        margin-top: 20px;
+        text-align: right;
+      }
+      /* DataTable overrides for modal */
+      #matches-table_wrapper .dataTables_filter {
+        margin-bottom: 15px;
+      }
+      .match-row {
+        cursor: pointer;
+      }
+      .match-row:hover {
+        background-color: #f5f5f5;
+      }
+      .match-row.selected {
+        background-color: #e6f7ff !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="table-container">
+      <h1>Match Categories</h1>
+      <div class="table-description">
+        Match your categories with Google Places categories. The dropdown shows matches ranked from best to worst with color coding:
+        <span class="rank-1">Excellent match</span>, 
+        <span class="rank-2">Good match</span>, 
+        <span class="rank-3">Fair match</span>, 
+        <span class="rank-4">Poor match</span>.
+        <span class="settings-toggle" id="toggle-thresholds">⚙ Change thresholds</span>
+      </div>
+
+      <div class="threshold-controls" id="threshold-controls">
+        <h3>Match Score Thresholds</h3>
+        <div class="threshold-row">
+          <div class="threshold-label rank-1">Excellent (≥)</div>
+          <input type="range" class="threshold-slider" id="threshold-excellent" min="0" max="1" step="0.05" value="0.8">
+          <div class="threshold-value" id="threshold-excellent-value">0.80</div>
+        </div>
+        <div class="threshold-row">
+          <div class="threshold-label rank-2">Good (≥)</div>
+          <input type="range" class="threshold-slider" id="threshold-good" min="0" max="1" step="0.05" value="0.5">
+          <div class="threshold-value" id="threshold-good-value">0.50</div>
+        </div>
+        <div class="threshold-row">
+          <div class="threshold-label rank-3">Fair (≥)</div>
+          <input type="range" class="threshold-slider" id="threshold-fair" min="0" max="1" step="0.05" value="0.3">
+          <div class="threshold-value" id="threshold-fair-value">0.30</div>
+        </div>
+        <button id="apply-thresholds" class="btn-primary">Apply Thresholds</button>
+      </div>
+
+      <table id="match-table" class="display">
+        <thead>
+          <tr>
+            <th>Your Category</th>
+            <th>Best Score</th>
+            <th>Select Match</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="footer-buttons">
+        <button id="save-matches-btn" class="btn-primary">Save Matches</button>
+        <button id="load-matches-btn" class="btn-secondary">Load Matches</button>
+        <button id="export-matches-btn" class="btn-secondary">Export Matches</button>
+        <button id="export-dataset-btn" class="btn-secondary">Export Enriched Dataset</button>
+      </div>
+    </div>
+
+    <div id="loading-modal" style="display: none;">
+      <div class="loading-content">
+        <img
+          src="{{ url_for('static', filename='data/images/loading.webp') }}"
+          alt="Loading..."
+        />
+        <p>Loading, please wait...</p>
+      </div>
+    </div>
+
+    <!-- Add the matches modal -->
+    <div id="matches-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" id="close-matches-modal">&times;</span>
+        <h2 class="modal-title">All Matches for: <span id="current-category-name"></span></h2>
+        
+        <table id="matches-table" class="display" style="width:100%">
+          <thead>
+            <tr>
+              <th>Your Category</th>
+              <th>Match Name</th>
+              <th>Score</th>
+              <th>Rank</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        
+        <div class="modal-footer">
+          <button id="select-match-btn" class="btn-primary">Select Match</button>
+          <button id="cancel-match-btn" class="btn-outline">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      $(document).ready(function () {
+        var table = $("#match-table").DataTable({
+          paging: true,
+          pageLength: 12,
+          lengthChange: false,
+          info: false,
+          ordering: true,
+          order: [[1, 'asc']], // Sort by Best Score column (ascending)
+          dom: "ft<'row'<'col-sm-12'p>>",
+        });
+
+        // Cache for type data
+        var typesData = {};
+        var allCategoriesData = [];
+        var currentCategoryMatches = [];
+        var currentDropdown = null;
+        
+        // Threshold values for ranks
+        var thresholdExcellent = 0.8;
+        var thresholdGood = 0.5;
+        var thresholdFair = 0.3;
+        
+        // Initialize the matches table
+        var matchesTable = $("#matches-table").DataTable({
+          paging: true,
+          pageLength: 10,
+          lengthChange: false,
+          searching: true,
+          info: true,
+          ordering: true,
+          order: [[2, 'desc']], // Sort by Score column (descending)
+          dom: "ft<'row'<'col-sm-12'p>>",
+          columnDefs: [{
+            targets: 3, // Rank column (now index 3 since we added a column)
+            createdCell: function(cell, cellData, rowData, rowIndex, colIndex) {
+              var rankName = cellData;
+              var rank;
+              switch(rankName) {
+                case "Excellent": rank = 1; break;
+                case "Good": rank = 2; break;
+                case "Fair": rank = 3; break;
+                case "Poor": rank = 4; break;
+                default: rank = 4;
+              }
+              $(cell).addClass('rank-' + rank);
+            }
+          }]
+        });
+        
+        // Helper function to calculate rank from score
+        function calculateRank(score) {
+          return score >= thresholdExcellent ? 1 : 
+                 (score >= thresholdGood ? 2 : 
+                 (score >= thresholdFair ? 3 : 4));
+        }
+        
+        // Helper function to get rank name
+        function getRankName(rank) {
+          switch(rank) {
+            case 1: return "Excellent";
+            case 2: return "Good";
+            case 3: return "Fair";
+            case 4: return "Poor";
+            default: return "Unknown";
+          }
+        }
+
+        // Helper function to add a match option to a dropdown
+        function addMatchOptionToDropdown($select, matchId, categoryName) {
+          // Check if the option already exists
+          var existingOption = $select.find('option[value="' + matchId + '"]');
+          if (existingOption.length > 0 || matchId === "-1") {
+            return;
+          }
+          
+          // Find the category data to get match details
+          var categoryData = allCategoriesData.find(c => c.name === categoryName);
+          if (categoryData) {
+            var matchData = categoryData.matches.find(m => m.id === parseInt(matchId));
+            if (matchData) {
+              var rank = calculateRank(matchData.score);
+              var typeName = typesData[matchId] || "Unknown Type";
+              var scoreText = " (" + matchData.score.toFixed(2) + ")";
+              
+              // Create and add the new option
+              var newOption = $('<option value="' + matchId + '" class="rank-' + rank + '">' + 
+                typeName + 
+                '<span class="score-indicator">' + scoreText + '</span>' +
+                '</option>');
+              
+              // Insert before the "See more" option if it exists, otherwise append to the end
+              var seeMoreOption = $select.find('option[value="more"]');
+              if (seeMoreOption.length > 0) {
+                seeMoreOption.before(newOption);
+              } else {
+                $select.append(newOption);
+              }
+            }
+          }
+        }
+
+        function showLoading() {
+          $("#loading-modal").show();
+        }
+
+        function hideLoading() {
+          $("#loading-modal").hide();
+        }
+
+        // Function to update UI based on threshold values without reloading data
+        function updateUIWithThresholds() {
+          table.clear();
+          
+          // Update table rows with new ranking
+          allCategoriesData.forEach(function (category) {
+            // Recalculate scores and ranks based on new thresholds
+            if (category.matches) {
+              category.matches.forEach(function(match) {
+                match.rank = calculateRank(match.score);
+              });
+              
+              // Sort matches by score (descending)
+              category.matches.sort(function(a, b) {
+                return b.score - a.score;
+              });
+              
+              // Update best match and score based on new thresholds
+              if (category.matches.length > 0) {
+                category.best_match_id = category.matches[0].id;
+                category.best_score = category.matches[0].score;
+              }
+            }
+            
+            // Create updated dropdown with new rankings
+            var dropdown = createMatchDropdown(category);
+            var bestScore = category.best_score ? category.best_score.toFixed(2) : "0.00";
+            
+            // Add row to table
+            table.row.add([
+              category.name,
+              bestScore,
+              dropdown
+            ]);
+          });
+          
+          table.draw(false);
+        }
+
+        function loadCategories() {
+          showLoading();
+          $.ajax({
+            url: "/get_categories_to_match",
+            method: "GET",
+            success: function (response) {
+              // Store types data in cache
+              typesData = response.types || {};
+              allCategoriesData = response.categories || [];
+              
+              if (allCategoriesData.length > 0) {
+                // Initial UI rendering
+                updateUIWithThresholds();
+              }
+              hideLoading();
+            },
+            error: function () {
+              hideLoading();
+              alert("Error loading categories.");
+            },
+          });
+        }
+
+        function createMatchDropdown(category) {
+          var dropdown = $('<select class="match-dropdown"></select>');
+          
+          // Add null match option
+          dropdown.append($('<option value="-1">No match</option>'));
+          
+          // Check if we have matches to display
+          if (category.matches && category.matches.length > 0) {
+            // Group matches by rank
+            var matchesByRank = {
+              1: [],
+              2: [],
+              3: [],
+              4: []
+            };
+            
+            // Sort matches into rank groups
+            category.matches.forEach(function(match) {
+              // Calculate rank on client side
+              var rank = calculateRank(match.score);
+              match.rank = rank;
+              matchesByRank[rank].push(match);
+            });
+            
+            // Add top ranked matches (rank 1 and 2) directly
+            if (matchesByRank[1].length > 0) {
+              var optgroup = $('<optgroup label="Excellent Matches"></optgroup>');
+              matchesByRank[1].forEach(function(match) {
+                var typeName = typesData[match.id] || "Unknown Type";
+                var scoreText = " (" + match.score.toFixed(2) + ")";
+                var option = $(
+                  '<option value="' + match.id + '" class="rank-' + match.rank + '">' + 
+                  typeName + 
+                  '<span class="score-indicator">' + scoreText + '</span>' +
+                  '</option>'
+                );
+                
+                // Pre-select the best match
+                if (category.best_match_id && match.id === category.best_match_id) {
+                  option.attr('selected', 'selected');
+                }
+                
+                optgroup.append(option);
+              });
+              dropdown.append(optgroup);
+            }
+            
+            if (matchesByRank[2].length > 0) {
+              var optgroup = $('<optgroup label="Good Matches"></optgroup>');
+              matchesByRank[2].forEach(function(match) {
+                var typeName = typesData[match.id] || "Unknown Type";
+                var scoreText = " (" + match.score.toFixed(2) + ")";
+                var option = $(
+                  '<option value="' + match.id + '" class="rank-' + match.rank + '">' + 
+                  typeName + 
+                  '<span class="score-indicator">' + scoreText + '</span>' +
+                  '</option>'
+                );
+                
+                // Pre-select the best match if no rank 1 match was selected
+                if (matchesByRank[1].length === 0 && category.best_match_id && match.id === category.best_match_id) {
+                  option.attr('selected', 'selected');
+                }
+                
+                optgroup.append(option);
+              });
+              dropdown.append(optgroup);
+            }
+            
+            // Add a "See more matches" option if we have rank 3 or 4 matches
+            if (matchesByRank[3].length > 0 || matchesByRank[4].length > 0) {
+              dropdown.append($('<option class="see-more-option" value="more">See more matches...</option>'));
+            }
+          }
+          
+          return dropdown.prop('outerHTML');
+        }
+
+        // Apply threshold changes
+        $("#apply-thresholds").on("click", function() {
+          // Update threshold values
+          thresholdExcellent = parseFloat($("#threshold-excellent").val());
+          thresholdGood = parseFloat($("#threshold-good").val());
+          thresholdFair = parseFloat($("#threshold-fair").val());
+          
+          // Ensure thresholds are in descending order
+          if (thresholdGood > thresholdExcellent) {
+            thresholdGood = thresholdExcellent;
+            $("#threshold-good").val(thresholdGood);
+            $("#threshold-good-value").text(thresholdGood.toFixed(2));
+          }
+          
+          if (thresholdFair > thresholdGood) {
+            thresholdFair = thresholdGood;
+            $("#threshold-fair").val(thresholdFair);
+            $("#threshold-fair-value").text(thresholdFair.toFixed(2));
+          }
+          
+          // Update UI with new threshold values
+          updateUIWithThresholds();
+          
+          // Hide the controls
+          $("#threshold-controls").slideUp();
+        });
+
+        $("#save-matches-btn").on("click", function () {
+          showLoading();
+          var matches = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            var selectedMatch = $(this.node()).find('select').val();
+            matches.push({
+              category: rowData[0],
+              best_score: rowData[1],
+              match: selectedMatch
+            });
+          });
+
+          $.ajax({
+            url: "/save_category_matches",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ matches: matches }),
+            success: function () {
+              hideLoading();
+              alert("Matches saved successfully!");
+            },
+            error: function () {
+              hideLoading();
+              alert("An error occurred while saving the matches.");
+            },
+          });
+        });
+
+        // Load saved matches
+        $("#load-matches-btn").on("click", function() {
+          showLoading();
+          $.ajax({
+            url: "/load_category_matches",
+            method: "GET",
+            success: function(response) {
+              if (response.matches && response.matches.length > 0) {
+                // Apply saved matches to the current table
+                table.rows().every(function() {
+                  var rowData = this.data();
+                  var category = rowData[0];
+                  var savedMatch = response.matches.find(m => m.category === category);
+                  
+                  if (savedMatch) {
+                    var $select = $(this.node()).find('select');
+                    var matchId = savedMatch.match;
+                    
+                    // Add the option if it doesn't exist
+                    addMatchOptionToDropdown($select, matchId, category);
+                    
+                    // Select the option
+                    $select.val(matchId);
+                  }
+                });
+                //alert("Matches loaded successfully!");
+              } else {
+                alert("No saved matches found.");
+              }
+              hideLoading();
+            },
+            error: function() {
+              hideLoading();
+              alert("An error occurred while loading the matches.");
+            }
+          });
+        });
+
+        // Export only the matches
+        $("#export-matches-btn").on("click", function() {
+          showLoading();
+          var matches = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            var selectedMatch = $(this.node()).find('select').val();
+            if (selectedMatch !== "-1") {
+              matches.push({
+                category: rowData[0],
+                best_score: rowData[1],
+                match: selectedMatch,
+                match_name: typesData[selectedMatch] || "Unknown"
+              });
+            }
+          });
+
+          if (matches.length === 0) {
+            hideLoading();
+            alert("No matches to export. Please match at least one category first.");
+            return;
+          }
+
+          // Convert to CSV
+          var csv = "Your Category,Match Name,Score\n";
+          matches.forEach(function(match) {
+            csv += '"' + match.category + '","' + match.match_name + '",' + match.best_score + '\n';
+          });
+          
+          // Download CSV
+          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          var url = URL.createObjectURL(blob);
+          var link = document.createElement("a");
+          link.setAttribute("href", url);
+          link.setAttribute("download", "category_matches.csv");
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          hideLoading();
+        });
+        
+        // Export the enriched dataset
+        $("#export-dataset-btn").on("click", function() {
+          showLoading();
+          
+          // Collect all matches in the correct format
+          var matches = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            var selectedMatch = $(this.node()).find('select').val();
+            matches.push({
+              category: rowData[0],
+              match: selectedMatch
+            });
+          });
+          
+          $.ajax({
+            url: "/export_enriched_dataset",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ matches: matches }),
+            success: function(response) {
+              hideLoading();
+              if (response.download_url) {
+                window.location.href = response.download_url;
+              } else {
+                alert("Export successful, but no download URL was provided.");
+              }
+            },
+            error: function(xhr) {
+              hideLoading();
+              let errorMsg = "An error occurred during export.";
+              if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+              }
+              alert(errorMsg);
+            }
+          });
+        });
+
+        // Handle "See more" option click to show the modal
+        $("#match-table").on("change", "select.match-dropdown", function() {
+          if ($(this).val() === "more") {
+            var $select = $(this);
+            currentDropdown = $select;
+            var row = $select.closest("tr");
+            var categoryName = table.row(row).data()[0];
+            
+            // Find the category data
+            var category = allCategoriesData.find(c => c.name === categoryName);
+            if (category) {
+              // Populate modal with match data
+              $("#current-category-name").text(categoryName);
+              
+              // Clear and populate the matches table
+              matchesTable.clear();
+              currentCategoryMatches = [];
+              
+              category.matches.forEach(function(match) {
+                var rank = calculateRank(match.score);
+                var typeName = typesData[match.id] || "Unknown Type";
+                var rankName = getRankName(rank);
+                
+                currentCategoryMatches.push(match);
+                
+                matchesTable.row.add([
+                  categoryName,
+                  typeName,
+                  match.score.toFixed(2),
+                  rankName
+                ]).draw(false);
+              });
+              
+              // Show the modal
+              $("#matches-modal").show();
+              
+              // Set dropdown to "No match"
+              $select.val("-1");
+            }
+          }
+        });
+        
+        // Close modal when clicking the X
+        $("#close-matches-modal").on("click", function() {
+          $("#matches-modal").hide();
+        });
+        
+        // Close modal when clicking Cancel
+        $("#cancel-match-btn").on("click", function() {
+          $("#matches-modal").hide();
+        });
+        
+        // Select match from modal
+        $("#select-match-btn").on("click", function() {
+          var selectedIndex = matchesTable.row('.selected').index();
+          
+          if (selectedIndex !== undefined && currentDropdown) {
+            var selectedMatch = currentCategoryMatches[selectedIndex];
+            var categoryName = $("#current-category-name").text();
+            
+            // Add the option if it doesn't exist
+            addMatchOptionToDropdown(currentDropdown, selectedMatch.id, categoryName);
+            
+            // Select the option
+            currentDropdown.val(selectedMatch.id);
+            
+            // Close the modal
+            $("#matches-modal").hide();
+          } else {
+            alert("Please select a match from the table.");
+          }
+        });
+        
+        // Handle row selection in the matches table
+        $('#matches-table tbody').on('click', 'tr', function() {
+          if ($(this).hasClass('selected')) {
+            $(this).removeClass('selected');
+          } else {
+            matchesTable.$('tr.selected').removeClass('selected');
+            $(this).addClass('selected');
+          }
+        });
+        
+        // Double-click to select and close
+        $('#matches-table tbody').on('dblclick', 'tr', function() {
+          $(this).addClass('selected');
+          $("#select-match-btn").click();
+        });
+
+        // Thresholds UI handling
+        $("#toggle-thresholds").on("click", function() {
+          $("#threshold-controls").slideToggle();
+        });
+        
+        // Update threshold display values
+        $(".threshold-slider").on("input", function() {
+          var value = parseFloat($(this).val()).toFixed(2);
+          $("#" + $(this).attr("id") + "-value").text(value);
+        });
+
+        loadCategories();
+      });
+    </script>
+  </body>
+</html> 

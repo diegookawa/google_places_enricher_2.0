@@ -4,6 +4,9 @@ Establishment Retrieval
  - Create a loading modal in 'coordinates_result.html' when clicking the 'Process data' button. - 
  - Fix the layout of the '+ Add establishment' button in 'components_result.html'. - 
  - Modify visualizations inside 'view_data.html' that may not make sense. - 
+ - Scale up and test a higher number of establishments
+    - Loading feedback: Use progress bars, logs or visualize retrived regions in the map (colored regions or circles)
+ - Upgrade to the new Google Places API 
 
 Data Enrichment
 - Modify 'main_page.html' to include an option for the data enrichment feature. - 
