@@ -254,6 +254,13 @@ def enrichment_categories():
 
     return jsonify({'message': 'Categories updated successfully.'}), 200
 
+def validate_path(path):
+    """Validate that a path is within the allowed directory"""
+    output_dir = os.path.abspath('static/data/output')
+    abs_path = os.path.abspath(path)
+    common_prefix = os.path.commonpath([output_dir, abs_path])
+    return common_prefix == output_dir
+
 @app.route('/get_available_datasets', methods=['GET'])
 def get_available_datasets():
     datasets = []
@@ -261,9 +268,10 @@ def get_available_datasets():
     try:
         for file in os.listdir(output_dir):
             if file.endswith('.csv'):
+                # Return only the filename instead of full path
                 datasets.append({
                     'name': file,
-                    'path': os.path.join(output_dir, file)
+                    'path': file  # Just the filename
                 })
         return jsonify({'datasets': datasets})
     except Exception as e:
@@ -303,75 +311,85 @@ def match_categories():
 @app.route('/get_categories_to_match', methods=['GET'])
 def get_categories_to_match():
     try:
-        # Read enrichment categories
-        enrichment_categories = []
         enrichment_file = 'static/data/input/enrichment_categories.csv'
-        if os.path.exists(enrichment_file):
-            with open(enrichment_file, newline='', encoding='utf-8') as csvfile:
-                reader = csv.reader(csvfile, delimiter=';')
-                next(reader, None)
-                for row in reader:
-                    enrichment_categories.append(row[0])
+        if not os.path.exists(enrichment_file):
+            return jsonify({'error': 'Enrichment categories file not found'}), 404
+        
+        df_enrichment = pd.read_csv(enrichment_file, delimiter=';')
+        if 'matching_phrase' not in df_enrichment.columns:
+            df_enrichment['matching_phrase'] = df_enrichment['category']
 
-        # Read Google Places data to get business types
-        google_data = pd.read_csv('static/data/output/establishments.csv')
-        all_types = [item.split(',')[0].strip("[]' ") for sublist in google_data['types'] for item in sublist.split(',')]
-        unique_types = list(set(all_types))
+        dataset_path = request.args.get('dataset_path', 'establishments.csv')
+        dataset_full_path = os.path.join('static/data/output', dataset_path)
+        if not os.path.exists(dataset_full_path):
+            return jsonify({'error': f'Dataset {dataset_path} not found'}), 404
         
-        # Create a mapping from type text to integer ID
-        type_to_id = {}
-        id_to_type = {}
-        for idx, type_name in enumerate(unique_types):
-            type_to_id[type_name] = idx
-            id_to_type[idx] = type_name
-        
-        # Use semantic similarity for matching
-        similarity_results = calculate_similarity_sentences(
-            sentences_estab=pd.Series(enrichment_categories), 
-            sentences_yelp=pd.Series(unique_types),
-            top_n=20  # Get top 20 matches for each category
-        )
-        
-        # Format the results for the frontend
+        google_data = pd.read_csv(dataset_full_path)
+        df_estab_phrases = create_estab_phrase(google_data)
+        df_estab_phrases_uniques = df_estab_phrases.drop_duplicates(subset="phrase_establishment")[['phrase_establishment']]
+        df_estab_phrases_uniques['words_phrase_estab'] = df_estab_phrases_uniques['phrase_establishment'].apply(lambda phrase: len(str(phrase).split(' ')))
+        df_estab_phrases_uniques = df_estab_phrases_uniques[df_estab_phrases_uniques['words_phrase_estab'] > 1]
+        df_estab_phrases_uniques = df_estab_phrases_uniques.reset_index(drop=True)
+
+        yelp_phrases = df_enrichment['matching_phrase']
+        # Ensure all phrases are strings
+        if not all(isinstance(p, str) for p in df_estab_phrases_uniques['phrase_establishment']):
+            bad_types = [(i, type(p).__name__, p) for i, p in enumerate(df_estab_phrases_uniques['phrase_establishment']) if not isinstance(p, str)]
+            return jsonify({'error': f'All establishment phrases must be strings. Found non-string values at: {bad_types}'}), 400
+        if not all(isinstance(p, str) for p in yelp_phrases):
+            bad_types = [(i, type(p).__name__, p) for i, p in enumerate(yelp_phrases) if not isinstance(p, str)]
+            return jsonify({'error': f'All matching phrases must be strings. Found non-string values at: {bad_types}'}), 400
+
+        sim_df = calculate_similarity_sentences(df_estab_phrases_uniques['phrase_establishment'], yelp_phrases)
+        # Build index-to-string maps, replacing NaN with None
+        estab_idx_to_phrase = {int(k): (str(v) if pd.notnull(v) else None) for k, v in df_estab_phrases_uniques['phrase_establishment'].to_dict().items()}
+        yelp_idx_to_phrase = {int(k): (str(v) if pd.notnull(v) else None) for k, v in yelp_phrases.reset_index(drop=True).to_dict().items()}
+        yelp_idx_to_category = {int(k): (str(v) if pd.notnull(v) else None) for k, v in df_enrichment['category'].reset_index(drop=True).to_dict().items()}
+
+        # For each establishment phrase, collect all matches sorted by score
+        matches_by_estab = {}
+        for row in sim_df.itertuples(index=False):
+            estab_idx = row.estab_idx
+            yelp_idx = row.yelp_idx
+            score = row.score
+            if estab_idx not in matches_by_estab:
+                matches_by_estab[estab_idx] = []
+            matches_by_estab[estab_idx].append({'yelp_idx': int(yelp_idx), 'score': float(score)})
+
+        # Prepare response: for each estab_idx, include its phrase, best match, and all matches (by index)
         categories_with_matches = []
-        for result in similarity_results:
-            category_name = result['sentence']
-            matches = result['matches']
-            
-            # Extract top matches with their scores, converting text to integer IDs
-            top_matches = [
-                {
-                    'id': type_to_id.get(match['text'], -1),  # Convert text to ID
-                    'score': match['score']
-                }
-                for match in matches
-            ]
-            
-            # Get the best match (highest score)
-            best_match_id = top_matches[0]['id'] if top_matches else -1
-            best_score = top_matches[0]['score'] if top_matches else 0
-            
-            # Add to the results list
+        for estab_idx, matches in matches_by_estab.items():
+            matches_sorted = sorted(matches, key=lambda x: x['score'], reverse=True)
+            best_match = matches_sorted[0] if matches_sorted else None
+            best_yelp_idx = best_match['yelp_idx'] if best_match else -1
+            best_score = best_match['score'] if best_match else 0
             categories_with_matches.append({
-                'name': category_name,
-                'best_match_id': best_match_id,
+                'estab_idx': int(estab_idx),
+                'phrase_establishment': estab_idx_to_phrase[estab_idx],
+                'best_yelp_idx': best_yelp_idx,
                 'best_score': best_score,
-                'matches': top_matches
+                'matches': matches_sorted
             })
-            
-        # Sort categories by best_score in ascending order
-        # This will put categories with worst matches (lowest scores) at the top
-        categories_with_matches.sort(key=lambda x: x['best_score'])
-
-        # Prepare the response with optimized data structure
+        # Replace NaN with None in the response for JSON compatibility
+        import math
+        def clean_json(obj):
+            if isinstance(obj, dict):
+                return {k: clean_json(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_json(v) for v in obj]
+            elif isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+                return None
+            return obj
         response_data = {
             'categories': categories_with_matches,
-            'types': id_to_type  # Return the mapping from ID to type text
+            'estab_idx_to_phrase': estab_idx_to_phrase,
+            'yelp_idx_to_phrase': yelp_idx_to_phrase,
+            'yelp_idx_to_category': yelp_idx_to_category
         }
-
+        response_data = clean_json(response_data)
         return jsonify(response_data)
-
     except Exception as e:
+        print(f"Error in get_categories_to_match: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/save_category_matches', methods=['POST'])

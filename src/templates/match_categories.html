@@ -205,7 +205,8 @@
       <table id="match-table" class="display">
         <thead>
           <tr>
-            <th>Your Category</th>
+            <th>Category</th>
+            <th>Matching Phrase</th>
             <th>Best Score</th>
             <th>Select Match</th>
           </tr>
@@ -264,8 +265,14 @@
           lengthChange: false,
           info: false,
           ordering: true,
-          order: [[1, 'asc']], // Sort by Best Score column (ascending)
+          order: [[2, 'asc']], // Sort by Best Score column (ascending)
           dom: "ft<'row'<'col-sm-12'p>>",
+          columns: [
+            null, // Category
+            null, // Matching Phrase
+            null, // Best Score
+            null  // Select Match
+          ]
         });
 
         // Cache for type data
@@ -369,39 +376,18 @@
         // Function to update UI based on threshold values without reloading data
         function updateUIWithThresholds() {
           table.clear();
-          
-          // Update table rows with new ranking
           allCategoriesData.forEach(function (category) {
-            // Recalculate scores and ranks based on new thresholds
-            if (category.matches) {
-              category.matches.forEach(function(match) {
-                match.rank = calculateRank(match.score);
-              });
-              
-              // Sort matches by score (descending)
-              category.matches.sort(function(a, b) {
-                return b.score - a.score;
-              });
-              
-              // Update best match and score based on new thresholds
-              if (category.matches.length > 0) {
-                category.best_match_id = category.matches[0].id;
-                category.best_score = category.matches[0].score;
-              }
-            }
-            
-            // Create updated dropdown with new rankings
-            var dropdown = createMatchDropdown(category);
+            // category.estab_idx is the index, not the string
+            var phraseEstablishment = estabIdxToPhrase[category.estab_idx];
             var bestScore = category.best_score ? category.best_score.toFixed(2) : "0.00";
-            
-            // Add row to table
+            var dropdown = createMatchDropdown(category);
             table.row.add([
-              category.name,
+              category.estab_idx, // Show index for debug, or replace with phraseEstablishment for display
+              phraseEstablishment,
               bestScore,
               dropdown
             ]);
           });
-          
           table.draw(false);
         }
 
@@ -411,12 +397,12 @@
             url: "/get_categories_to_match",
             method: "GET",
             success: function (response) {
-              // Store types data in cache
-              typesData = response.types || {};
+              // Store index-to-string maps
+              estabIdxToPhrase = response.estab_idx_to_phrase || {};
+              yelpIdxToPhrase = response.yelp_idx_to_phrase || {};
+              yelpIdxToCategory = response.yelp_idx_to_category || {};
               allCategoriesData = response.categories || [];
-              
               if (allCategoriesData.length > 0) {
-                // Initial UI rendering
                 updateUIWithThresholds();
               }
               hideLoading();
@@ -430,79 +416,36 @@
 
         function createMatchDropdown(category) {
           var dropdown = $('<select class="match-dropdown"></select>');
-          
-          // Add null match option
           dropdown.append($('<option value="-1">No match</option>'));
-          
-          // Check if we have matches to display
           if (category.matches && category.matches.length > 0) {
             // Group matches by rank
-            var matchesByRank = {
-              1: [],
-              2: [],
-              3: [],
-              4: []
-            };
-            
-            // Sort matches into rank groups
+            var matchesByRank = { 1: [], 2: [], 3: [], 4: [] };
             category.matches.forEach(function(match) {
-              // Calculate rank on client side
               var rank = calculateRank(match.score);
               match.rank = rank;
               matchesByRank[rank].push(match);
             });
-            
             // Add top ranked matches (rank 1 and 2) directly
-            if (matchesByRank[1].length > 0) {
-              var optgroup = $('<optgroup label="Excellent Matches"></optgroup>');
-              matchesByRank[1].forEach(function(match) {
-                var typeName = typesData[match.id] || "Unknown Type";
-                var scoreText = " (" + match.score.toFixed(2) + ")";
-                var option = $(
-                  '<option value="' + match.id + '" class="rank-' + match.rank + '">' + 
-                  typeName + 
-                  '<span class="score-indicator">' + scoreText + '</span>' +
-                  '</option>'
-                );
-                
-                // Pre-select the best match
-                if (category.best_match_id && match.id === category.best_match_id) {
-                  option.attr('selected', 'selected');
-                }
-                
-                optgroup.append(option);
-              });
-              dropdown.append(optgroup);
-            }
-            
-            if (matchesByRank[2].length > 0) {
-              var optgroup = $('<optgroup label="Good Matches"></optgroup>');
-              matchesByRank[2].forEach(function(match) {
-                var typeName = typesData[match.id] || "Unknown Type";
-                var scoreText = " (" + match.score.toFixed(2) + ")";
-                var option = $(
-                  '<option value="' + match.id + '" class="rank-' + match.rank + '">' + 
-                  typeName + 
-                  '<span class="score-indicator">' + scoreText + '</span>' +
-                  '</option>'
-                );
-                
-                // Pre-select the best match if no rank 1 match was selected
-                if (matchesByRank[1].length === 0 && category.best_match_id && match.id === category.best_match_id) {
-                  option.attr('selected', 'selected');
-                }
-                
-                optgroup.append(option);
-              });
-              dropdown.append(optgroup);
-            }
-            
+            [1,2].forEach(function(rank) {
+              if (matchesByRank[rank].length > 0) {
+                var optgroup = $('<optgroup label="' + getRankName(rank) + ' Matches"></optgroup>');
+                matchesByRank[rank].forEach(function(match) {
+                  var typeName = yelpIdxToPhrase[match.yelp_idx] || "Unknown";
+                  var scoreText = " (" + match.score.toFixed(2) + ")";
+                  var option = $('<option value="' + match.yelp_idx + '" class="rank-' + match.rank + '">' + typeName + '<span class="score-indicator">' + scoreText + '</span></option>');
+                  if (category.best_yelp_idx && match.yelp_idx === category.best_yelp_idx) {
+                    option.attr('selected', 'selected');
+                  }
+                  optgroup.append(option);
+                });
+                dropdown.append(optgroup);
+              }
+            });
             // Add a "See more matches" option if we have rank 3 or 4 matches
             if (matchesByRank[3].length > 0 || matchesByRank[4].length > 0) {
               dropdown.append($('<option class="see-more-option" value="more">See more matches...</option>'));
             }
           }
-          
           return dropdown.prop('outerHTML');
         }
 
@@ -540,9 +483,9 @@
             var rowData = this.data();
             var selectedMatch = $(this.node()).find('select').val();
             matches.push({
-              category: rowData[0],
-              best_score: rowData[1],
-              match: selectedMatch
+              estab_idx: rowData[0],
+              yelp_idx: selectedMatch,
+              best_score: rowData[2]
             });
           });
 
@@ -573,15 +516,15 @@
                 // Apply saved matches to the current table
                 table.rows().every(function() {
                   var rowData = this.data();
-                  var category = rowData[0];
-                  var savedMatch = response.matches.find(m => m.category === category);
+                  var estabIdx = rowData[0];
+                  var savedMatch = response.matches.find(m => m.estab_idx === estabIdx);
                   
                   if (savedMatch) {
                     var $select = $(this.node()).find('select');
-                    var matchId = savedMatch.match;
+                    var matchId = savedMatch.yelp_idx;
                     
                     // Add the option if it doesn't exist
-                    addMatchOptionToDropdown($select, matchId, category);
+                    addMatchOptionToDropdown($select, matchId, estabIdx);
                     
                     // Select the option
                     $select.val(matchId);
@@ -609,10 +552,10 @@
             var selectedMatch = $(this.node()).find('select').val();
             if (selectedMatch !== "-1") {
               matches.push({
-                category: rowData[0],
-                best_score: rowData[1],
-                match: selectedMatch,
-                match_name: typesData[selectedMatch] || "Unknown"
+                estab_idx: rowData[0],
+                yelp_idx: selectedMatch,
+                best_score: rowData[2],
+                match_name: yelpIdxToPhrase[selectedMatch] || "Unknown"
               });
             }
           });
@@ -626,7 +569,7 @@
           // Convert to CSV
           var csv = "Your Category,Match Name,Score\n";
           matches.forEach(function(match) {
-            csv += '"' + match.category + '","' + match.match_name + '",' + match.best_score + '\n';
+            csv += '"' + match.estab_idx + '","' + match.match_name + '",' + match.best_score + '\n';
           });
           
           // Download CSV
@@ -652,7 +595,8 @@
             var rowData = this.data();
             var selectedMatch = $(this.node()).find('select').val();
             matches.push({
-              category: rowData[0],
+              estab_idx: rowData[0],
+              matching_phrase: rowData[1],
               match: selectedMatch
             });
           });
@@ -687,13 +631,13 @@
             var $select = $(this);
             currentDropdown = $select;
             var row = $select.closest("tr");
-            var categoryName = table.row(row).data()[0];
+            var estabIdx = table.row(row).data()[0];
             
             // Find the category data
-            var category = allCategoriesData.find(c => c.name === categoryName);
+            var category = allCategoriesData.find(c => c.estab_idx === estabIdx);
             if (category) {
               // Populate modal with match data
-              $("#current-category-name").text(categoryName);
+              $("#current-category-name").text(estabIdx);
               
               // Clear and populate the matches table
               matchesTable.clear();
@@ -701,13 +645,13 @@
               
               category.matches.forEach(function(match) {
                 var rank = calculateRank(match.score);
-                var typeName = typesData[match.id] || "Unknown Type";
+                var typeName = yelpIdxToPhrase[match.yelp_idx] || "Unknown";
                 var rankName = getRankName(rank);
                 
                 currentCategoryMatches.push(match);
                 
                 matchesTable.row.add([
-                  categoryName,
+                  estabIdx,
                   typeName,
                   match.score.toFixed(2),
                   rankName
@@ -739,13 +683,13 @@
           
           if (selectedIndex !== undefined && currentDropdown) {
             var selectedMatch = currentCategoryMatches[selectedIndex];
-            var categoryName = $("#current-category-name").text();
+            var estabIdx = $("#current-category-name").text();
             
             // Add the option if it doesn't exist
-            addMatchOptionToDropdown(currentDropdown, selectedMatch.id, categoryName);
+            addMatchOptionToDropdown(currentDropdown, selectedMatch.yelp_idx, estabIdx);
             
             // Select the option
-            currentDropdown.val(selectedMatch.id);
+            currentDropdown.val(selectedMatch.yelp_idx);
             
             // Close the modal
             $("#matches-modal").hide();
@@ -785,4 +729,4 @@
       });
     </script>
   </body>
-</html> 
+</html>
