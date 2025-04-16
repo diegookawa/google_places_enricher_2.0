@@ -29,6 +29,7 @@
             <!-- Component 1: Pick existing dataset to enrich -->
             <div class="table-container">
                 <div class="form-group">
+                    <!-- TODO: Add a folder for datasets and only list the datasets (not all .csv)-->
                     <label for="existingDataset">Select Existing Dataset</label>
                     <select id="existingDataset" name="existingDataset" onchange="toggleUploadInput()">
                         <option value="">Select a dataset...</option>
@@ -59,6 +60,7 @@
                         <tr>
                             <th><input type="checkbox" id="select-all" /></th>
                             <th>Category</th>
+                            <th>Matching Phrase</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -77,6 +79,7 @@
                     <span class="close-btn" id="close-category-modal">&times;</span>
                     <h2 id="modal-title">Add Category</h2>
                     <input type="text" id="category-input" placeholder="Category name">
+                    <input type="text" id="matching-phrase-input" placeholder="Matching phrase">
                     <div class="modal-buttons">
                         <button class="btn-primary" id="save-category-btn">Save</button>
                         <button class="btn-outline" id="cancel-category-btn">Cancel</button>
@@ -87,7 +90,7 @@
     </div>
 
     <div class="submit-container">
-        <button type="button" id="submit-btn" class="btn-primary">Submit</button>
+        <button id="submit-btn" class="btn-primary">Submit</button>
     </div>
 
     <script>
@@ -102,7 +105,7 @@
                     select.find('option').not(':first').not(':last').remove();
                     response.datasets.forEach(function(dataset) {
                         select.find('option:last').before($('<option>', {
-                            value: dataset.path,
+                            value: dataset.path,  // This is now just the filename
                             text: dataset.name
                         }));
                     });
@@ -152,8 +155,14 @@
                 success: function (response) {
                     if (response.categories) {
                         table.clear();
-                        response.categories.forEach(function (category) {
-                            table.row.add(['<input type="checkbox" class="row-checkbox">', category]).draw(false);
+                        response.categories.forEach(function (categoryObj) {
+                            var cat = categoryObj.category || '';
+                            var phrase = (categoryObj.matching_phrase !== undefined && categoryObj.matching_phrase !== null && categoryObj.matching_phrase !== '') ? categoryObj.matching_phrase : cat;
+                            table.row.add([
+                                '<input type="checkbox" class="row-checkbox">',
+                                cat,
+                                phrase
+                            ]).draw(false);
                         });
                     }
                 },
@@ -171,6 +180,11 @@
                 info: false,
                 ordering: true,
                 dom: "ft<'row'<'col-sm-12'p>>",
+                columns: [
+                    { orderable: false },
+                    null,
+                    null
+                ]
             });
 
             loadExistingDatasets();
@@ -200,9 +214,9 @@
                 var data = [];
                 table.rows().every(function () {
                     var rowData = this.data();
-                    data.push([rowData[1]]);
+                    data.push([rowData[1], rowData[2]]);
                 });
-                var csv = Papa.unparse({ fields: ["Category"], data: data });
+                var csv = Papa.unparse({ fields: ["Category", "Matching Phrase"], data: data });
                 var hiddenElement = document.createElement("a");
                 hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
                 hiddenElement.target = "_blank";
@@ -215,7 +229,9 @@
                 var data = [];
                 table.rows().every(function () {
                     var rowData = this.data();
-                    data.push({ category: rowData[1] });
+                    var cat = rowData[1] || '';
+                    var phrase = rowData[2] || cat;
+                    data.push({ category: cat, matching_phrase: phrase });
                 });
                 $.ajax({
                     url: "/enrichment_categories",
@@ -234,6 +250,7 @@
             $("#add-new-value-btn").on("click", function () {
                 $("#modal-title").text("Add Category");
                 $("#category-input").val("");
+                $("#matching-phrase-input").val("");
                 isEditing = false;
                 $("#category-modal").show();
             });
@@ -249,7 +266,13 @@
                             var data = results.data;
                             table.clear();
                             data.forEach(function (row) {
-                                table.row.add(['<input type="checkbox" class="row-checkbox">', row.category]).draw(false);
+                                var cat = row.category || row.Category || '';
+                                var phrase = row.matching_phrase || row["Matching Phrase"] || cat;
+                                table.row.add([
+                                    '<input type="checkbox" class="row-checkbox">',
+                                    cat,
+                                    phrase
+                                ]).draw(false);
                             });
                         },
                         error: function (error) {
@@ -274,8 +297,10 @@
 
                 editingRow = $(checkedRows[0]);
                 const currentCategory = table.row(editingRow).data()[1];
+                const currentPhrase = table.row(editingRow).data()[2];
                 $("#modal-title").text("Edit Category");
                 $("#category-input").val(currentCategory);
+                $("#matching-phrase-input").val(currentPhrase);
                 isEditing = true;
                 $("#category-modal").show();
             });
@@ -287,6 +312,7 @@
 
             $("#save-category-btn").on("click", function() {
                 const categoryName = $("#category-input").val().trim();
+                const matchingPhrase = $("#matching-phrase-input").val().trim();
                 if (!categoryName) {
                     alert("Category name cannot be empty");
                     return;
@@ -295,13 +321,15 @@
                 if (isEditing && editingRow) {
                     table.row(editingRow).data([
                         '<input type="checkbox" class="row-checkbox">',
-                        categoryName
+                        categoryName,
+                        matchingPhrase
                     ]).draw();
                     editingRow = null;
                 } else {
                     table.row.add([
                         '<input type="checkbox" class="row-checkbox">',
-                        categoryName
+                        categoryName,
+                        matchingPhrase
                     ]).draw(false);
                 }
 
@@ -314,38 +342,33 @@
                 }
             });
 
-            $("#submit-btn").on("click", function() {
-                // Get the selected dataset
+            $("#submit-btn").on("click", function() { 
                 const selectedDataset = $("#existingDataset").val();
-                if (!selectedDataset) {
+                if (!selectedDataset || selectedDataset === 'upload') {
                     alert("Please select a dataset to enrich");
                     return;
                 }
 
-                // Get all categories from the table
-                const categories = [];
-                table.rows().every(function() {
-                    const rowData = this.data();
-                    categories.push({ category: rowData[1] });
+                // First save the current categories
+                var categoryData = [];
+                table.rows().every(function () {
+                    var rowData = this.data();
+                    var cat = rowData[1];
+                    var phrase = rowData[2] || cat;
+                    categoryData.push({ category: cat, matching_phrase: phrase });
                 });
 
-                if (categories.length === 0) {
-                    alert("Please add at least one category");
-                    return;
-                }
-
-                // Save categories and redirect to matching page
                 $.ajax({
                     url: "/enrichment_categories",
                     type: "POST",
                     contentType: "application/json",
-                    data: JSON.stringify({ categories: categories }),
-                    success: function(response) {
-                        // Redirect to the category matching page
-                        window.location.href = "/match_categories";
+                    data: JSON.stringify({ categories: categoryData }),
+                    success: function() {
+                        // Redirect to category matching page with just the filename
+                        window.location.href = `/match_categories?dataset_path=${encodeURIComponent(selectedDataset)}`;
                     },
                     error: function(xhr) {
-                        alert("Error saving categories: " + xhr.responseText);
+                        alert("Failed to save categories: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
                     }
                 });
             });

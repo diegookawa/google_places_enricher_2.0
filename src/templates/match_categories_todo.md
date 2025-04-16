@@ -1,0 +1,5 @@
+- Move the submit button closer to the table
+- Submit or export
+- Review styles, check if they match other pages
+- Don't hardcore file paths
+- Download exported files from server

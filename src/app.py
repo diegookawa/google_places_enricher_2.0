@@ -1,13 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from dotenv import load_dotenv, set_key
 from flows import calculate_coordinates, request_google_places
+from utils import create_estab_phrase, calculate_similarity_sentences
 from werkzeug.utils import secure_filename
-from utils import calculate_similarity_sentences
+from utils import calculate_similarity_sentences, create_yelp_phrase, create_estab_phrase
 
 import pandas as pd
+import json
 import csv
 import os
-import uuid
 import datetime
 
 app = Flask(__name__)
@@ -220,10 +221,13 @@ def get_enrichment_categories():
 
     try:
         with open(file_path, newline='', encoding='utf-8') as csvfile:
-            reader = csv.reader(csvfile, delimiter=';')
-            next(reader, None)
+            reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
-                categories.append(row[0])
+                cat = row.get('category', '')
+                phrase = row.get('matching_phrase', '')
+                if not phrase:
+                    phrase = cat
+                categories.append({'category': cat, 'matching_phrase': phrase})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -237,11 +241,13 @@ def enrichment_categories():
     csv_file_path = 'static/data/input/enrichment_categories.csv'
 
     try:
-        with open(csv_file_path, mode='w', newline='') as file:
+        with open(csv_file_path, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file, delimiter=';')
-            writer.writerow(['category'])
+            writer.writerow(['category', 'matching_phrase'])
             for cat in categories:
-                writer.writerow([cat['category']])
+                category = cat.get('category', '')
+                phrase = cat.get('matching_phrase', '') or category
+                writer.writerow([category, phrase])
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
