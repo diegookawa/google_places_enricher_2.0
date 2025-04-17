@@ -111,38 +111,60 @@ def reload_config():
     
     return RADIUS, GOOGLE_MAPS_API, API, SEARCH_COMPONENT, OUTPUT_TYPE
 
-def create_url_request(lat, lon, cat):
+def create_places_post_request(lat, lon, cat):
     """
-    Creates the url that will be used to make the request to the Google places API.
+    Cria o payload e headers para requisição POST usando o endpoint searchText da API Google Places v1.
 
     Parameters
     ----------
     lat: float
-        Geographic coordinate latitude.
+        Latitude da coordenada.
     lon: float
-        Geographic coordinate longitude.
+        Longitude da coordenada.
     cat: str
-        Category for data enrichment.
-
-    Raises
-    ------
-    No Raises.
+        Categoria personalizada (ex: "italian", "bakery", etc).
 
     Returns
     -------
-    str
-        Url for the request in the Google places API.
+    tuple
+        (url: str, headers: dict, payload: dict)
     """
-    
-    # Reload config every time the function is called to get updated values
     RADIUS, GOOGLE_MAPS_API, API, SEARCH_COMPONENT, OUTPUT_TYPE = reload_config()
 
-    location = '&location={:s},{:s}'.format(str(lat), str(lon))
-    radius = '&radius={:s}'.format(str(RADIUS))
-    establishment_keyword = '&keyword={:s}'.format(cat)
-    api_key = '&key={:s}'.format(os.getenv('KEY'))
+    url = "https://places.googleapis.com/v1/places:searchText"
 
-    return GOOGLE_MAPS_API + API + SEARCH_COMPONENT + OUTPUT_TYPE + api_key + location + radius + establishment_keyword
+    payload = {
+        "textQuery": cat,
+        "locationBias": {
+            "circle": {
+                "center": {
+                    "latitude": lat,
+                    "longitude": lon
+                },
+                "radius": float(RADIUS)
+            }
+        }
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": os.getenv('KEY'),
+        "X-Goog-FieldMask": (
+            "places.id,"
+            "places.categories,"
+            "places.location,"
+            "places.businessStatus,"
+            "places.displayName,"
+            "places.priceLevel,"
+            "places.rating,"
+            "places.types,"
+            "places.userRatingCount,"
+            "places.formattedAddress"
+        )
+    }
+
+    return url, headers, payload
+
 
 def make_request(url, params={}):
     """

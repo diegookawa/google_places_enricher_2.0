@@ -5,32 +5,32 @@ import pyproj
 import requests
 from dotenv import load_dotenv
 from config import RADIUS, NORTHEAST_LAT, NORTHEAST_LON, SOUTHWEST_LAT, SOUTHWEST_LON
-from utils import read_file, initialize_variables_request, create_url_request, export_data_request, create_message_request
+from utils import read_file, initialize_variables_request, create_places_post_request, export_data_request, create_message_request
 
 def update_config_file(radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon):
     """
-    Updates the config.py file with the new configuration values.
+    Atualiza o arquivo config.py com os novos valores de configuração.
 
-    Parameters
+    Parâmetros
     ----------
     radius : float
-        The new radius value.
+        O novo valor de raio.
     southwest_lat : float
-        The new southwest latitude.
+        A nova latitude sudoeste.
     southwest_lon : float
-        The new southwest longitude.
+        A nova longitude sudoeste.
     northeast_lat : float
-        The new northeast latitude.
+        A nova latitude nordeste.
     northeast_lon : float
-        The new northeast longitude.
+        A nova longitude nordeste.
     """
     config_path = "./config.py"
 
-    # Read the content of the config.py file
+    # Lê o conteúdo do arquivo config.py
     with open(config_path, "r") as f:
         config_content = f.readlines()
 
-    # Update the lines with the new values
+    # Atualiza as linhas com os novos valores
     for i, line in enumerate(config_content):
         if line.startswith("RADIUS"):
             config_content[i] = f"RADIUS = {radius}\n"
@@ -43,27 +43,23 @@ def update_config_file(radius, southwest_lat, southwest_lon, northeast_lat, nort
         elif line.startswith("NORTHEAST_LON"):
             config_content[i] = f"NORTHEAST_LON = {northeast_lon}\n"
 
-    # Write the updated content back to the file
+    # Escreve o conteúdo atualizado de volta no arquivo
     with open(config_path, "w") as f:
         f.writelines(config_content)
 
 def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon):
     """
-    Generates a CSV file with the geographic coordinates of a rectangular area
-    and according to a predetermined step in meters and updates the values in the config file.
+    Gera um arquivo CSV com as coordenadas geográficas de uma área retangular
+    e de acordo com um passo predeterminado em metros, além de atualizar os valores no arquivo de configuração.
 
-    Parameters
+    Parâmetros
     ----------
-    No Parameters.
+    Nenhum parâmetro.
 
-    Raises
-    ------
-    No raises.
-
-    Returns
+    Retorna
     -------
     str
-        Message indicating the end of execution.
+        Mensagem indicando o fim da execução.
     """
 
     RADIUS = radius
@@ -72,7 +68,7 @@ def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, n
     NORTHEAST_LON = northeast_lon
     SOUTHWEST_LON = southwest_lon
 
-    # Update the values in the config file
+    # Atualiza os valores no arquivo de configuração
     update_config_file(RADIUS, SOUTHWEST_LAT, SOUTHWEST_LON, NORTHEAST_LAT, NORTHEAST_LON)
 
     to_proxy_transformer = pyproj.Transformer.from_crs("epsg:4326", "epsg:3857")
@@ -101,46 +97,49 @@ def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, n
         for p in gridpoints:
             of.write("{:f};{:f}\n".format(p.x, p.y))
 
-    return "Execution performed successfully."
+    return "Execução realizada com sucesso."
 
-def make_request(url, params=None):
+def make_request(url, params=None, method="GET"):
     """
-    Makes an HTTP GET request and returns the JSON response.
+    Faz uma requisição HTTP de acordo com o método especificado e retorna a resposta JSON.
 
-    Parameters
+    Parâmetros
     ----------
     url : str
-        The URL to make the request.
+        A URL para fazer a requisição.
     params : dict
-        Optional parameters to include in the request.
+        Parâmetros opcionais a serem incluídos na requisição.
+    method : str
+        O método HTTP a ser utilizado (GET ou POST).
 
-    Returns
+    Retorna
     -------
     dict
-        The JSON response.
+        A resposta JSON.
     """
     try:
-        response = requests.get(url, params=params)
-        print("Request URL:", response.url)  # Log the request URL
+        if method.upper() == "POST":
+            response = requests.post(url, json=params)
+        else:
+            response = requests.get(url, params=params)
+        print("Request URL:", response.url)  # Log da URL da requisição
         response_data = response.json()
-        print("Response:", response_data)  # Log the API response
+        print("Response:", response_data)  # Log da resposta da API
         return response_data
     except Exception as e:
-        print("Error during request:", str(e))  # Log any errors
+        print("Erro durante a requisição:", str(e))  # Log de erros
         return {"status": "ERROR", "error_message": str(e)}
 
 def request_google_places():
     """
-    Performs requests to the Google Places API, according to the geographic coordinates
-    defined in the input file and a predetermined radius.
-    It enriches the data according to the categories also defined in the input file
-    and handles the return of the API, making the data available in a CSV file.
+    Realiza requisições à nova API Google Places Nearby Search (POST),
+    enriquecendo os dados com base nas coordenadas e categorias fornecidas.
 
-    Returns
+    Retorna
     -------
     str
-        Message indicating if the flow was executed successfully or
-        otherwise the error that interrupted the execution.
+        Mensagem indicando se o fluxo foi executado com sucesso ou
+        qualquer erro que interrompeu a execução.
     """
 
     df_latlon = read_file("Coordinates", "./static/data/output/lat_lon_calculated.csv")
@@ -164,43 +163,35 @@ def request_google_places():
         for cat in df_categories["category"]:
             establishments = []
 
-            url = create_url_request(lat, lon, cat)
-            results = make_request(url)
-            if not results["status"] == "OK":
-                export_data_request(
-                    establishments_features_labels, establishments_features_data
-                )
-                return create_message_request(results)
+            url, headers, payload = create_places_post_request(lat, lon, cat)
 
-            establishments.extend(results["results"])
+            # Usar o método POST para a requisição
+            response = make_request(url, params=payload, method="POST")
 
-            pages = 1
-            params = {}
-            time.sleep(2)
-            while "next_page_token" in results:
-                pages += 1
-                params["pagetoken"] = results["next_page_token"]
-                results = make_request(url, params)
-                if not results["status"] == "OK":
-                    export_data_request(
-                        establishments_features_labels, establishments_features_data
-                    )
-                    return create_message_request(results)
-                establishments.extend(results["results"])
-                time.sleep(2)
+            if response.get("status") == "ERROR":
+                return f"Error: {response.get('error_message')}"
 
+            if "places" not in response:
+                return f"Error: {response}"
+
+            establishments.extend(response["places"])
+
+            # TODO: Lidar com paginação, caso a API precise
             for establishment in establishments:
                 for feature_index in range(len(establishments_features_labels) - 1):
+                    label = establishments_features_labels[feature_index]
                     try:
-                        establishments_features_data[feature_index].append(
-                            establishment[establishments_features_labels[feature_index]]
-                        )
-                    except KeyError:
+                        if label == "name":
+                            value = establishment["displayName"]["text"]
+                        elif label == "formatted_address":
+                            value = establishment["formattedAddress"]
+                        else:
+                            value = establishment.get(label)
+                        establishments_features_data[feature_index].append(value)
+                    except Exception:
                         establishments_features_data[feature_index].append(None)
 
-                establishments_features_data[ 
-                    len(establishments_features_data) - 1
-                ].append(cat)
+                establishments_features_data[len(establishments_features_data) - 1].append(cat)
 
     export_data_request(establishments_features_labels, establishments_features_data)
-    return "Execution performed successfully."
+    return "Execução realizada com sucesso."
