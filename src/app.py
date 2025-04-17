@@ -342,9 +342,9 @@ def get_categories_to_match():
 
         sim_df = calculate_similarity_sentences(df_estab_phrases_uniques['phrase_establishment'], yelp_phrases)
         # Build index-to-string maps, replacing NaN with None
-        estab_idx_to_phrase = {int(k): (str(v) if pd.notnull(v) else None) for k, v in df_estab_phrases_uniques['phrase_establishment'].to_dict().items()}
-        yelp_idx_to_phrase = {int(k): (str(v) if pd.notnull(v) else None) for k, v in yelp_phrases.reset_index(drop=True).to_dict().items()}
-        yelp_idx_to_category = {int(k): (str(v) if pd.notnull(v) else None) for k, v in df_enrichment['category'].reset_index(drop=True).to_dict().items()}
+        estab_idx_to_phrase = [str(v) if pd.notnull(v) else None for k, v in df_estab_phrases_uniques['phrase_establishment'].to_dict().items()]
+        yelp_idx_to_phrase = [str(v) if pd.notnull(v) else None for k, v in yelp_phrases.reset_index(drop=True).to_dict().items()]
+        yelp_idx_to_category = [str(v) if pd.notnull(v) else None for k, v in df_enrichment['category'].reset_index(drop=True).to_dict().items()]
 
         # For each establishment phrase, collect all matches sorted by score
         matches_by_estab = {}

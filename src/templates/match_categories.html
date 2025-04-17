@@ -205,10 +205,10 @@
       <table id="match-table" class="display">
         <thead>
           <tr>
-            <th>Category</th>
             <th>Matching Phrase</th>
             <th>Best Score</th>
-            <th>Select Match</th>
+            <th>Match category phrase</th>
+            <th>Category</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -265,13 +265,13 @@
           lengthChange: false,
           info: false,
           ordering: true,
-          order: [[2, 'asc']], // Sort by Best Score column (ascending)
+          order: [[1, 'asc']], // Sort by Best Score column (ascending)
           dom: "ft<'row'<'col-sm-12'p>>",
           columns: [
-            null, // Category
             null, // Matching Phrase
             null, // Best Score
-            null  // Select Match
+            null, // Match category phrase
+            null  // Category
           ]
         });
 
@@ -376,16 +376,24 @@
         // Function to update UI based on threshold values without reloading data
         function updateUIWithThresholds() {
           table.clear();
+          // Sort by best_score descending before rendering
+          allCategoriesData.sort(function(a, b) {
+            return Number(b.best_score) - Number(a.best_score);
+          });
           allCategoriesData.forEach(function (category) {
-            // category.estab_idx is the index, not the string
             var phraseEstablishment = estabIdxToPhrase[category.estab_idx];
-            var bestScore = category.best_score ? category.best_score.toFixed(2) : "0.00";
+            var bestScore = category.best_score ? Number(category.best_score).toFixed(2) : "0.00";
             var dropdown = createMatchDropdown(category);
+            // Get the most specific category for the best match
+            var matchedCategory = '';
+            if (category.best_yelp_idx !== undefined && yelpIdxToCategory[category.best_yelp_idx]) {
+              matchedCategory = yelpIdxToCategory[category.best_yelp_idx];
+            }
             table.row.add([
-              category.estab_idx, // Show index for debug, or replace with phraseEstablishment for display
               phraseEstablishment,
               bestScore,
-              dropdown
+              dropdown,
+              matchedCategory
             ]);
           });
           table.draw(false);
@@ -397,11 +405,11 @@
             url: "/get_categories_to_match",
             method: "GET",
             success: function (response) {
-              // Store index-to-string maps
-              estabIdxToPhrase = response.estab_idx_to_phrase || {};
-              yelpIdxToPhrase = response.yelp_idx_to_phrase || {};
-              yelpIdxToCategory = response.yelp_idx_to_category || {};
+              estabIdxToPhrase = response.estab_idx_to_phrase || [];
+              yelpIdxToPhrase = response.yelp_idx_to_phrase || [];
+              yelpIdxToCategory = response.yelp_idx_to_category || [];
               allCategoriesData = response.categories || [];
+              // No need to convert keys, arrays are already indexed by number
               if (allCategoriesData.length > 0) {
                 updateUIWithThresholds();
               }
@@ -418,22 +426,20 @@
           var dropdown = $('<select class="match-dropdown"></select>');
           dropdown.append($('<option value="-1">No match</option>'));
           if (category.matches && category.matches.length > 0) {
-            // Group matches by rank
             var matchesByRank = { 1: [], 2: [], 3: [], 4: [] };
             category.matches.forEach(function(match) {
               var rank = calculateRank(match.score);
               match.rank = rank;
               matchesByRank[rank].push(match);
             });
-            // Add top ranked matches (rank 1 and 2) directly
             [1,2].forEach(function(rank) {
               if (matchesByRank[rank].length > 0) {
                 var optgroup = $('<optgroup label="' + getRankName(rank) + ' Matches"></optgroup>');
                 matchesByRank[rank].forEach(function(match) {
-                  var typeName = yelpIdxToPhrase[match.yelp_idx] || "Unknown";
-                  var scoreText = " (" + match.score.toFixed(2) + ")";
-                  var option = $('<option value="' + match.yelp_idx + '" class="rank-' + match.rank + '">' + typeName + '<span class="score-indicator">' + scoreText + '</span></option>');
-                  if (category.best_yelp_idx && match.yelp_idx === category.best_yelp_idx) {
+                  var typeName = yelpIdxToPhrase[Number(match.yelp_idx)] || "Unknown";
+                  var scoreText = " (" + Number(match.score).toFixed(2) + ")";
+                  var option = $('<option value="' + Number(match.yelp_idx) + '" class="rank-' + match.rank + '">' + typeName + '<span class="score-indicator">' + scoreText + '</span></option>');
+                  if (category.best_yelp_idx !== undefined && Number(match.yelp_idx) === Number(category.best_yelp_idx)) {
                     option.attr('selected', 'selected');
                   }
                   optgroup.append(option);
@@ -441,7 +447,6 @@
                 dropdown.append(optgroup);
               }
             });
-            // Add a "See more matches" option if we have rank 3 or 4 matches
             if (matchesByRank[3].length > 0 || matchesByRank[4].length > 0) {
               dropdown.append($('<option class="see-more-option" value="more">See more matches...</option>'));
             }
@@ -483,9 +488,9 @@
             var rowData = this.data();
             var selectedMatch = $(this.node()).find('select').val();
             matches.push({
-              estab_idx: rowData[0],
-              yelp_idx: selectedMatch,
-              best_score: rowData[2]
+              estab_idx: Number(rowData[0]),
+              yelp_idx: selectedMatch !== undefined ? Number(selectedMatch) : -1,
+              best_score: Number(rowData[2])
             });
           });
 
@@ -516,12 +521,12 @@
                 // Apply saved matches to the current table
                 table.rows().every(function() {
                   var rowData = this.data();
-                  var estabIdx = rowData[0];
-                  var savedMatch = response.matches.find(m => m.estab_idx === estabIdx);
+                  var estabIdx = Number(rowData[0]);
+                  var savedMatch = response.matches.find(m => Number(m.estab_idx) === estabIdx);
                   
                   if (savedMatch) {
                     var $select = $(this.node()).find('select');
-                    var matchId = savedMatch.yelp_idx;
+                    var matchId = Number(savedMatch.yelp_idx);
                     
                     // Add the option if it doesn't exist
                     addMatchOptionToDropdown($select, matchId, estabIdx);
@@ -552,10 +557,10 @@
             var selectedMatch = $(this.node()).find('select').val();
             if (selectedMatch !== "-1") {
               matches.push({
-                estab_idx: rowData[0],
-                yelp_idx: selectedMatch,
-                best_score: rowData[2],
-                match_name: yelpIdxToPhrase[selectedMatch] || "Unknown"
+                estab_idx: Number(rowData[0]),
+                yelp_idx: Number(selectedMatch),
+                best_score: Number(rowData[2]),
+                match_name: yelpIdxToPhrase[Number(selectedMatch)] || "Unknown"
               });
             }
           });
@@ -595,9 +600,9 @@
             var rowData = this.data();
             var selectedMatch = $(this.node()).find('select').val();
             matches.push({
-              estab_idx: rowData[0],
+              estab_idx: Number(rowData[0]),
               matching_phrase: rowData[1],
-              match: selectedMatch
+              match: Number(selectedMatch)
             });
           });
           
@@ -627,44 +632,48 @@
 
         // Handle "See more" option click to show the modal
         $("#match-table").on("change", "select.match-dropdown", function() {
-          if ($(this).val() === "more") {
-            var $select = $(this);
+          var $select = $(this);
+          if ($select.val() === "more") {
             currentDropdown = $select;
-            var row = $select.closest("tr");
-            var estabIdx = table.row(row).data()[0];
-            
+            var $row = $select.closest("tr");
+            var phraseEstablishment = $row.find("td").eq(0).text();
+            // Find the estab_idx for this row
+            var estabIdx = estabIdxToPhrase.findIndex(function(val) { return val === phraseEstablishment; });
             // Find the category data
-            var category = allCategoriesData.find(c => c.estab_idx === estabIdx);
+            var category = allCategoriesData.find(c => Number(c.estab_idx) === estabIdx);
             if (category) {
-              // Populate modal with match data
-              $("#current-category-name").text(estabIdx);
-              
-              // Clear and populate the matches table
+              $("#current-category-name").text(phraseEstablishment);
               matchesTable.clear();
               currentCategoryMatches = [];
-              
               category.matches.forEach(function(match) {
                 var rank = calculateRank(match.score);
-                var typeName = yelpIdxToPhrase[match.yelp_idx] || "Unknown";
+                var typeName = yelpIdxToPhrase[Number(match.yelp_idx)] || "Unknown";
                 var rankName = getRankName(rank);
-                
                 currentCategoryMatches.push(match);
-                
                 matchesTable.row.add([
-                  estabIdx,
+                  phraseEstablishment,
                   typeName,
-                  match.score.toFixed(2),
+                  Number(match.score).toFixed(2),
                   rankName
                 ]).draw(false);
               });
-              
-              // Show the modal
               $("#matches-modal").show();
-              
-              // Set dropdown to "No match"
-              $select.val("-1");
+              $select.val("-1"); // Reset dropdown to "No match" after opening modal
             }
           }
+        });
+
+        // Update the category column when the dropdown changes
+        $("#match-table").on("change", "select.match-dropdown", function() {
+          var $select = $(this);
+          var selectedIdx = $select.val();
+          var $row = $select.closest("tr");
+          var categoryCell = $row.find("td").eq(3); // 4th column (Category)
+          var matchedCategory = '';
+          if (selectedIdx !== "-1" && yelpIdxToCategory[selectedIdx]) {
+            matchedCategory = yelpIdxToCategory[selectedIdx];
+          }
+          categoryCell.text(matchedCategory);
         });
         
         // Close modal when clicking the X
@@ -680,24 +689,19 @@
         // Select match from modal
         $("#select-match-btn").on("click", function() {
           var selectedIndex = matchesTable.row('.selected').index();
-          
           if (selectedIndex !== undefined && currentDropdown) {
             var selectedMatch = currentCategoryMatches[selectedIndex];
-            var estabIdx = $("#current-category-name").text();
-            
             // Add the option if it doesn't exist
-            addMatchOptionToDropdown(currentDropdown, selectedMatch.yelp_idx, estabIdx);
-            
+            addMatchOptionToDropdown(currentDropdown, Number(selectedMatch.yelp_idx), $("#current-category-name").text());
             // Select the option
-            currentDropdown.val(selectedMatch.yelp_idx);
-            
+            currentDropdown.val(Number(selectedMatch.yelp_idx)).trigger('change');
             // Close the modal
             $("#matches-modal").hide();
           } else {
             alert("Please select a match from the table.");
           }
         });
-        
+
         // Handle row selection in the matches table
         $('#matches-table tbody').on('click', 'tr', function() {
           if ($(this).hasClass('selected')) {

@@ -355,8 +355,16 @@
                     var rowData = this.data();
                     var cat = rowData[1];
                     var phrase = rowData[2] || cat;
+                    // Prevent NaN or undefined/null from being saved
+                    if (cat === undefined || cat === null || cat === '' || cat === 'NaN' || String(cat).toLowerCase() === 'nan') return;
+                    if (phrase === undefined || phrase === null || phrase === '' || phrase === 'NaN' || String(phrase).toLowerCase() === 'nan') phrase = cat;
                     categoryData.push({ category: cat, matching_phrase: phrase });
                 });
+
+                if (categoryData.length === 0) {
+                    alert("No valid categories to save. Please check your table.");
+                    return;
+                }
 
                 $.ajax({
                     url: "/enrichment_categories",
