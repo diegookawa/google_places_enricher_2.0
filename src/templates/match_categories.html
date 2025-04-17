@@ -332,36 +332,20 @@
         }
 
         // Helper function to add a match option to a dropdown
-        function addMatchOptionToDropdown($select, matchId, categoryName) {
+        function addMatchOptionToDropdown($select, matchId, typeName, score, rank) {
           // Check if the option already exists
           var existingOption = $select.find('option[value="' + matchId + '"]');
-          if (existingOption.length > 0 || matchId === "-1") {
+          if (existingOption.length > 0 || matchId === -1) {
             return;
           }
-          
-          // Find the category data to get match details
-          var categoryData = allCategoriesData.find(c => c.name === categoryName);
-          if (categoryData) {
-            var matchData = categoryData.matches.find(m => m.id === parseInt(matchId));
-            if (matchData) {
-              var rank = calculateRank(matchData.score);
-              var typeName = typesData[matchId] || "Unknown Type";
-              var scoreText = " (" + matchData.score.toFixed(2) + ")";
-              
-              // Create and add the new option
-              var newOption = $('<option value="' + matchId + '" class="rank-' + rank + '">' + 
-                typeName + 
-                '<span class="score-indicator">' + scoreText + '</span>' +
-                '</option>');
-              
-              // Insert before the "See more" option if it exists, otherwise append to the end
-              var seeMoreOption = $select.find('option[value="more"]');
-              if (seeMoreOption.length > 0) {
-                seeMoreOption.before(newOption);
-              } else {
-                $select.append(newOption);
-              }
-            }
+          var scoreText = " (" + Number(score).toFixed(2) + ")";
+          var newOption = $('<option value="' + matchId + '" class="rank-' + rank + '">' + typeName + '<span class="score-indicator">' + scoreText + '</span></option>');
+          // Insert before the "See more" option if it exists, otherwise append
+          var seeMoreOption = $select.find('option[value="more"]');
+          if (seeMoreOption.length > 0) {
+            seeMoreOption.before(newOption);
+          } else {
+            $select.append(newOption);
           }
         }
 
@@ -691,10 +675,13 @@
           var selectedIndex = matchesTable.row('.selected').index();
           if (selectedIndex !== undefined && currentDropdown) {
             var selectedMatch = currentCategoryMatches[selectedIndex];
-            // Add the option if it doesn't exist
-            addMatchOptionToDropdown(currentDropdown, Number(selectedMatch.yelp_idx), $("#current-category-name").text());
+            var matchId = Number(selectedMatch.yelp_idx);
+            var typeName = yelpIdxToPhrase[matchId] || "Unknown";
+            var score = selectedMatch.score;
+            var rank = calculateRank(score);
+            addMatchOptionToDropdown(currentDropdown, matchId, typeName, score, rank);
             // Select the option
-            currentDropdown.val(Number(selectedMatch.yelp_idx)).trigger('change');
+            currentDropdown.val(matchId).trigger('change');
             // Close the modal
             $("#matches-modal").hide();
           } else {

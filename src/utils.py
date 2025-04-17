@@ -427,5 +427,5 @@ def calculate_similarity_sentences(sentences_estab, sentences_yelp):
         pairs_sorted = sorted(pairs, key=lambda x: x['score'], reverse=True)
         data.extend(pairs_sorted)
     df_score = pd.DataFrame(data)
-    print(df_score)
+
     return df_score
