@@ -134,6 +134,8 @@
           hiddenElement.click();
         });
 
+        let lastSelectedRow = null;
+
         $("#table tbody").on(
           "click",
           'input[type="checkbox"]',

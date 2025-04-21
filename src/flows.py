@@ -5,32 +5,37 @@ import pyproj
 import requests
 from dotenv import load_dotenv
 from config import RADIUS, NORTHEAST_LAT, NORTHEAST_LON, SOUTHWEST_LAT, SOUTHWEST_LON
-from utils import read_file, initialize_variables_request, create_places_post_request, export_data_request, create_message_request
+from utils import (
+    read_file,
+    initialize_variables_request,
+    create_places_post_request,
+    export_data_request, 
+    create_message_request
+)
 
 def update_config_file(radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon):
     """
-    Atualiza o arquivo config.py com os novos valores de configuração.
+    Updates the config.py file with new configuration values.
 
-    Parâmetros
+    Parameters
     ----------
     radius : float
-        O novo valor de raio.
+        The new radius value.
     southwest_lat : float
-        A nova latitude sudoeste.
+        The new southwest latitude.
     southwest_lon : float
-        A nova longitude sudoeste.
+        The new southwest longitude.
     northeast_lat : float
-        A nova latitude nordeste.
+        The new northeast latitude.
     northeast_lon : float
-        A nova longitude nordeste.
+        The new northeast longitude.
     """
     config_path = "./config.py"
 
-    # Lê o conteúdo do arquivo config.py
     with open(config_path, "r") as f:
         config_content = f.readlines()
 
-    # Atualiza as linhas com os novos valores
+    # Update lines with new values
     for i, line in enumerate(config_content):
         if line.startswith("RADIUS"):
             config_content[i] = f"RADIUS = {radius}\n"
@@ -43,23 +48,23 @@ def update_config_file(radius, southwest_lat, southwest_lon, northeast_lat, nort
         elif line.startswith("NORTHEAST_LON"):
             config_content[i] = f"NORTHEAST_LON = {northeast_lon}\n"
 
-    # Escreve o conteúdo atualizado de volta no arquivo
+    # Write the updated content back to the file
     with open(config_path, "w") as f:
         f.writelines(config_content)
 
 def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon):
     """
-    Gera um arquivo CSV com as coordenadas geográficas de uma área retangular
-    e de acordo com um passo predeterminado em metros, além de atualizar os valores no arquivo de configuração.
+    Generates a CSV file with geographic coordinates of a rectangular area
+    according to a predefined step in meters, and updates the config file values.
 
-    Parâmetros
+    Parameters
     ----------
-    Nenhum parâmetro.
+    None.
 
-    Retorna
+    Returns
     -------
     str
-        Mensagem indicando o fim da execução.
+        Message indicating the end of execution.
     """
 
     RADIUS = radius
@@ -68,7 +73,7 @@ def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, n
     NORTHEAST_LON = northeast_lon
     SOUTHWEST_LON = southwest_lon
 
-    # Atualiza os valores no arquivo de configuração
+    # Update values in config file
     update_config_file(RADIUS, SOUTHWEST_LAT, SOUTHWEST_LON, NORTHEAST_LAT, NORTHEAST_LON)
 
     to_proxy_transformer = pyproj.Transformer.from_crs("epsg:4326", "epsg:3857")
@@ -97,25 +102,25 @@ def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, n
         for p in gridpoints:
             of.write("{:f};{:f}\n".format(p.x, p.y))
 
-    return "Execução realizada com sucesso."
+    return "Execution went successfully."
 
 def make_request(url, params=None, method="GET", headers=None):
     """
-    Faz uma requisição HTTP de acordo com o método especificado e retorna a resposta JSON.
+    Makes an HTTP request according to the specified method and returns the JSON response.
 
-    Parâmetros
+    Parameters
     ----------
     url : str
-        A URL para fazer a requisição.
+        The URL for the request.
     params : dict
-        Parâmetros opcionais a serem incluídos na requisição.
+        Optional parameters to include in the request.
     method : str
-        O método HTTP a ser utilizado (GET ou POST).
+        The HTTP method to use (GET or POST).
 
-    Retorna
+    Returns
     -------
     dict
-        A resposta JSON.
+        The JSON response.
     """
     try:
         if method.upper() == "POST":
@@ -127,19 +132,19 @@ def make_request(url, params=None, method="GET", headers=None):
         print("Response:", response_data)
         return response_data
     except Exception as e:
-        print("Erro durante a requisição:", str(e))
+        print("Error during request:", str(e))
         return {"status": "ERROR", "error_message": str(e)}
 
 def request_google_places():
     """
-    Realiza requisições à nova API Google Places Nearby Search (POST),
-    enriquecendo os dados com base nas coordenadas e categorias fornecidas.
+    Makes requests to the new Google Places Nearby Search API (POST),
+    enriching data based on provided coordinates and categories.
 
-    Retorna
+    Returns
     -------
     str
-        Mensagem indicando se o fluxo foi executado com sucesso ou
-        qualquer erro que interrompeu a execução.
+        Message indicating if the flow was successfully executed or
+        any error that interrupted execution.
     """
 
     df_latlon = read_file("Coordinates", "./static/data/output/lat_lon_calculated.csv")
@@ -165,7 +170,7 @@ def request_google_places():
 
             url, headers, payload = create_places_post_request(lat, lon, cat)
 
-            # Usar o método POST para a requisição
+            # Use POST method for the request
             response = make_request(url, params=payload, method="POST", headers=headers)
 
             if response.get("status") == "ERROR":
@@ -176,24 +181,38 @@ def request_google_places():
 
             establishments.extend(response["places"])
 
-            # TODO: Lidar com paginação, caso a API precise
+            # TODO: Handle pagination if required by the API
             for establishment in establishments:
-                for feature_index in range(len(establishments_features_labels) - 1):
-                    label = establishments_features_labels[feature_index]
+                for feature_index, label in enumerate(establishments_features_labels):
                     try:
-                        if label == "name":
-                            value = establishment["displayName"]["text"]
-                        elif label == "formatted_address":
-                            value = establishment["formattedAddress"]
+                        if label == "business_status":
+                            value = establishment.get("businessStatus")
+                        elif label == "geometry":
+                            location = establishment.get("location", {})
+                            value = f"{location.get('latitude')}, {location.get('longitude')}"
+                        elif label == "name":
+                            value = establishment.get("displayName", {}).get("text")
+                        elif label == "place_id":
+                            value = establishment.get("id")
+                        elif label == "price_level":
+                            value = establishment.get("priceLevel")
+                        elif label == "rating":
+                            value = establishment.get("rating")
+                        elif label == "types":
+                            value = ", ".join(establishment.get("types", []))
+                        elif label == "user_ratings_total":
+                            value = establishment.get("userRatingCount")
+                        elif label == "vicinity":
+                            value = establishment.get("formattedAddress")
+                        elif label == "category":
+                            value = cat  # Custom category
                         else:
-                            value = establishment.get(label)
+                            value = None
                         establishments_features_data[feature_index].append(value)
-                    except Exception:
+                    except Exception as e:
                         establishments_features_data[feature_index].append(None)
-
-                establishments_features_data[len(establishments_features_data) - 1].append(cat)
 
     print(establishments_features_data)
     print(establishments_features_labels)
     export_data_request(establishments_features_labels, establishments_features_data)
-    return "Execução realizada com sucesso."
+    return "Execution went successfully."

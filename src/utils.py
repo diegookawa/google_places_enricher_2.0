@@ -239,9 +239,6 @@ def treat_data_request(df):
         The processed data.
     """
     
-    print('ANTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEES')
-    print(df)
-    
     df['geometry'] = df['geometry'].astype(str)
     df_estab_cat = df.groupby('place_id')[['geometry', 'category']].agg(['unique'])
 
@@ -262,8 +259,6 @@ def treat_data_request(df):
     df_place_id.drop(columns=['geometry', 'opening_hours', 'category'], inplace=True)
     df_final = df_estab_cat.merge(df_place_id, on='place_id', how='left')
     df_final.drop(columns=['geometry_unique'], inplace=True)
-
-    print("Salvando dataframe com shape:", df_final.shape)
 
     return df_final
 
