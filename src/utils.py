@@ -111,38 +111,59 @@ def reload_config():
     
     return RADIUS, GOOGLE_MAPS_API, API, SEARCH_COMPONENT, OUTPUT_TYPE
 
-def create_url_request(lat, lon, cat):
+def create_places_post_request(lat, lon, cat):
     """
-    Creates the url that will be used to make the request to the Google places API.
+    Cria o payload e headers para requisição POST usando o endpoint searchText da API Google Places v1.
 
     Parameters
     ----------
     lat: float
-        Geographic coordinate latitude.
+        Latitude da coordenada.
     lon: float
-        Geographic coordinate longitude.
+        Longitude da coordenada.
     cat: str
-        Category for data enrichment.
-
-    Raises
-    ------
-    No Raises.
+        Categoria personalizada (ex: "italian", "bakery", etc).
 
     Returns
     -------
-    str
-        Url for the request in the Google places API.
+    tuple
+        (url: str, headers: dict, payload: dict)
     """
-    
-    # Reload config every time the function is called to get updated values
     RADIUS, GOOGLE_MAPS_API, API, SEARCH_COMPONENT, OUTPUT_TYPE = reload_config()
 
-    location = '&location={:s},{:s}'.format(str(lat), str(lon))
-    radius = '&radius={:s}'.format(str(RADIUS))
-    establishment_keyword = '&keyword={:s}'.format(cat)
-    api_key = '&key={:s}'.format(os.getenv('KEY'))
+    url = "https://places.googleapis.com/v1/places:searchText"
 
-    return GOOGLE_MAPS_API + API + SEARCH_COMPONENT + OUTPUT_TYPE + api_key + location + radius + establishment_keyword
+    payload = {
+        "textQuery": cat,
+        "locationBias": {
+            "circle": {
+                "center": {
+                    "latitude": lat,
+                    "longitude": lon
+                },
+                "radius": float(RADIUS)
+            }
+        }
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": os.getenv('KEY'),
+        "X-Goog-FieldMask": (
+            "places.id,"
+            "places.location,"
+            "places.businessStatus,"
+            "places.displayName,"
+            "places.priceLevel,"
+            "places.rating,"
+            "places.types,"
+            "places.userRatingCount,"
+            "places.formattedAddress"
+        )
+    }
+
+    return url, headers, payload
+
 
 def make_request(url, params={}):
     """
@@ -217,7 +238,7 @@ def treat_data_request(df):
     pandas.core.frame.DataFrame
         The processed data.
     """
- 
+    
     df['geometry'] = df['geometry'].astype(str)
     df_estab_cat = df.groupby('place_id')[['geometry', 'category']].agg(['unique'])
 
@@ -234,7 +255,7 @@ def treat_data_request(df):
     df_estab_cat.reset_index(inplace=True)
     df_estab_cat.rename(columns={'category_unique': 'categories', 'lat_': 'lat', 'lon_': 'lon', 'place_id_': 'place_id'}, inplace=True)
 
-    df_place_id = df.drop_duplicates(subset="place_id")
+    df_place_id = df.drop_duplicates(subset="place_id").copy()
     df_place_id.drop(columns=['geometry', 'opening_hours', 'category'], inplace=True)
     df_final = df_estab_cat.merge(df_place_id, on='place_id', how='left')
     df_final.drop(columns=['geometry_unique'], inplace=True)

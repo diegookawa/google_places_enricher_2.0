@@ -4,7 +4,6 @@ from flows import calculate_coordinates, request_google_places
 from werkzeug.utils import secure_filename
 from collections import Counter
 import ast
-
 import pandas as pd
 import csv
 import os
@@ -126,13 +125,18 @@ def update_categories_and_process_data():
     csv_file_path = 'static/data/input/categories_request.csv'
 
     try:
+        print(f"Received categories: {categories}")
+
         with open(csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['category'])
             for cat in categories:
-                writer.writerow(cat) 
+                writer.writerow(cat)
 
+        print("Calling request_google_places...")
         result = request_google_places()
+        print(f"Result from request_google_places: {result}")
+
         if not result:
             return jsonify({"error": "Google Places API returned no response"}), 500
         if "successfully" not in result.lower():
@@ -141,6 +145,7 @@ def update_categories_and_process_data():
         return jsonify({"message": "CSV updated successfully"}), 200 
 
     except Exception as e:
+        print(f"Exception occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/calculate_coordinates", methods=["POST"])
