@@ -151,7 +151,6 @@ def create_places_post_request(lat, lon, cat):
         "X-Goog-Api-Key": os.getenv('KEY'),
         "X-Goog-FieldMask": (
             "places.id,"
-            "places.categories,"
             "places.location,"
             "places.businessStatus,"
             "places.displayName,"
@@ -239,7 +238,10 @@ def treat_data_request(df):
     pandas.core.frame.DataFrame
         The processed data.
     """
- 
+    
+    print('ANTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEES')
+    print(df)
+    
     df['geometry'] = df['geometry'].astype(str)
     df_estab_cat = df.groupby('place_id')[['geometry', 'category']].agg(['unique'])
 
@@ -256,10 +258,12 @@ def treat_data_request(df):
     df_estab_cat.reset_index(inplace=True)
     df_estab_cat.rename(columns={'category_unique': 'categories', 'lat_': 'lat', 'lon_': 'lon', 'place_id_': 'place_id'}, inplace=True)
 
-    df_place_id = df.drop_duplicates(subset="place_id")
+    df_place_id = df.drop_duplicates(subset="place_id").copy()
     df_place_id.drop(columns=['geometry', 'opening_hours', 'category'], inplace=True)
     df_final = df_estab_cat.merge(df_place_id, on='place_id', how='left')
     df_final.drop(columns=['geometry_unique'], inplace=True)
+
+    print("Salvando dataframe com shape:", df_final.shape)
 
     return df_final
 

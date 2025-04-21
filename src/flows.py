@@ -99,7 +99,7 @@ def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, n
 
     return "Execução realizada com sucesso."
 
-def make_request(url, params=None, method="GET"):
+def make_request(url, params=None, method="GET", headers=None):
     """
     Faz uma requisição HTTP de acordo com o método especificado e retorna a resposta JSON.
 
@@ -119,15 +119,15 @@ def make_request(url, params=None, method="GET"):
     """
     try:
         if method.upper() == "POST":
-            response = requests.post(url, json=params)
+            response = requests.post(url, json=params, headers=headers)
         else:
-            response = requests.get(url, params=params)
-        print("Request URL:", response.url)  # Log da URL da requisição
+            response = requests.get(url, params=params, headers=headers)
+        print("Request URL:", response.url)
         response_data = response.json()
-        print("Response:", response_data)  # Log da resposta da API
+        print("Response:", response_data)
         return response_data
     except Exception as e:
-        print("Erro durante a requisição:", str(e))  # Log de erros
+        print("Erro durante a requisição:", str(e))
         return {"status": "ERROR", "error_message": str(e)}
 
 def request_google_places():
@@ -166,7 +166,7 @@ def request_google_places():
             url, headers, payload = create_places_post_request(lat, lon, cat)
 
             # Usar o método POST para a requisição
-            response = make_request(url, params=payload, method="POST")
+            response = make_request(url, params=payload, method="POST", headers=headers)
 
             if response.get("status") == "ERROR":
                 return f"Error: {response.get('error_message')}"
@@ -193,5 +193,7 @@ def request_google_places():
 
                 establishments_features_data[len(establishments_features_data) - 1].append(cat)
 
+    print(establishments_features_data)
+    print(establishments_features_labels)
     export_data_request(establishments_features_labels, establishments_features_data)
     return "Execução realizada com sucesso."
