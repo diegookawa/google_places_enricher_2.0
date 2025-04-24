@@ -392,124 +392,61 @@ def get_categories_to_match():
         print(f"Error in get_categories_to_match: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/save_category_matches', methods=['POST'])
-def save_category_matches():
-    try:
-        data = request.get_json()
-        matches = data.get('matches', [])
-
-        # Save matches to a CSV file
-        matches_file = 'static/data/input/category_matches.csv'
-        with open(matches_file, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file, delimiter=';')
-            writer.writerow(['category', 'best_score', 'match'])
-            for match in matches:
-                writer.writerow([match['category'], match['best_score'], match['match']])
-
-        return jsonify({'message': 'Category matches saved successfully'}), 200
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/load_category_matches', methods=['GET'])
-def load_category_matches():
-    try:
-        matches_file = 'static/data/input/category_matches.csv'
-        matches = []
-        
-        if os.path.exists(matches_file):
-            with open(matches_file, newline='', encoding='utf-8') as file:
-                reader = csv.reader(file, delimiter=';')
-                next(reader, None)  # Skip header
-                for row in reader:
-                    matches.append({
-                        'category': row[0],
-                        'best_score': float(row[1]),
-                        'match': row[2]
-                    })
-            
-            return jsonify({'matches': matches}), 200
-        else:
-            return jsonify({'matches': []}), 200
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/export_enriched_dataset', methods=['POST'])
 def export_enriched_dataset():
     try:
         data = request.get_json()
+        categories = data.get('categories', [])
+        phrases = data.get('phrases', [])
         matches = data.get('matches', [])
-        
-        # Create a dictionary for quick lookup of category matches
-        category_matches = {}
-        for match in matches:
-            category = match['category']
-            match_id = match['match']
-            # Only store valid matches (not -1)
-            if match_id != "-1":
-                category_matches[category] = match_id
-        
-        # Read the Google Places data
-        establishments_df = pd.read_csv('static/data/output/establishments.csv')
-        
-        # Read the type mapping to get actual type names
-        types_map = {}
-        google_data = pd.read_csv('static/data/output/establishments.csv')
-        all_types = [item.split(',')[0].strip("[]' ") for sublist in google_data['types'] for item in sublist.split(',')]
-        unique_types = list(set(all_types))
-        for idx, type_name in enumerate(unique_types):
-            types_map[str(idx)] = type_name
-        
-        # Add a new column for matched categories
-        establishments_df['matched_categories'] = establishments_df.apply(
-            lambda row: get_matched_categories(row, category_matches, types_map),
-            axis=1
-        )
-        
-        # Generate a unique filename
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"enriched_dataset_{timestamp}.csv"
-        file_path = os.path.join('static/data/output', filename)
-        
-        # Save the enriched dataset
-        establishments_df.to_csv(file_path, index=False)
-        
-        # Return the download URL
-        download_url = url_for('static', filename=f'data/output/{filename}')
-        return jsonify({'download_url': download_url, 'message': 'Dataset exported successfully'})
-        
+        dataset_path = data.get('dataset_path', 'establishments.csv')
+        dataset_full_path = os.path.join('static/data/output', dataset_path)
+        if not os.path.exists(dataset_full_path):
+            return jsonify({'error': f'Dataset {dataset_path} not found'}), 404
+        df = pd.read_csv(dataset_full_path)
+        # Try to find the phrase column
+        phrase_col = None
+        for col in ['phrase', 'phrase_establishment', 'matching_phrase']:
+            if col in df.columns:
+                phrase_col = col
+                break
+        # If not found, generate it using create_estab_phrase
+        if not phrase_col:
+            from utils import create_estab_phrase
+            df_phrases = create_estab_phrase(df)
+            # Merge generated phrases into df
+            df = df.merge(df_phrases, on='place_id', how='left')
+            phrase_col = 'phrase_establishment'
+        # Build phrase -> idx lookup
+        phrase_to_idx = {p: i for i, p in enumerate(phrases)}
+        match_lookup = {m['phrase_idx']: m for m in matches}
+        enriched_rows = []
+        for _, row in df.iterrows():
+            phrase_val = row[phrase_col]
+            phrase_idx = phrase_to_idx.get(str(phrase_val)) if pd.notnull(phrase_val) else None
+            match = match_lookup.get(phrase_idx) if phrase_idx is not None else None
+            matched_phrase = phrases[phrase_idx] if phrase_idx is not None and phrase_idx < len(phrases) else None
+            category_idx = match['category_idx'] if match else None
+            matched_category = categories[category_idx] if category_idx is not None and category_idx != -1 and category_idx < len(categories) else None
+            selected_score = match['selected_score'] if match else None
+            best_score = match['best_score'] if match else None
+            enriched_row = row.to_dict()
+            enriched_row['phrase_idx'] = phrase_idx
+            enriched_row['matched_phrase'] = matched_phrase
+            enriched_row['category_idx'] = category_idx
+            enriched_row['matched_category'] = matched_category
+            enriched_row['selected_score'] = selected_score
+            enriched_row['best_score'] = best_score
+            enriched_rows.append(enriched_row)
+        df_enriched = pd.DataFrame(enriched_rows)
+        now = datetime.datetime.now()
+        out_name = f"enriched_{now.strftime('%Y%m%d_%H%M%S')}.csv"
+        out_path = os.path.join('static/data/output', out_name)
+        df_enriched.to_csv(out_path, index=False)
+        download_url = url_for('static', filename=f'data/output/{out_name}')
+        return jsonify({'download_url': download_url})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-def get_matched_categories(row, category_matches, types_map):
-    """
-    Match establishment types against the category matches.
-    
-    Parameters:
-    row (Series): A row from the establishments DataFrame
-    category_matches (dict): Dictionary mapping category names to type IDs
-    types_map (dict): Dictionary mapping type IDs to type names
-    
-    Returns:
-    str: A comma-separated string of matched categories
-    """
-    # Get the establishment types
-    types_str = row['types']
-    if pd.isna(types_str) or not types_str:
-        return ""
-    
-    establishment_types = [t.strip("[]' ") for t in types_str.split(',')]
-    
-    # Find which categories match this establishment's types
-    matched_categories = []
-    for category, type_id in category_matches.items():
-        # Convert the type_id to the actual type name
-        type_name = types_map.get(type_id)
-        if type_name and type_name in establishment_types:
-            matched_categories.append(category)
-    
-    return ", ".join(matched_categories)
 
 if __name__ == "__main__":
     app.run()
