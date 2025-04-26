@@ -3,12 +3,12 @@ from dotenv import load_dotenv, set_key
 from flows import calculate_coordinates, request_google_places
 from utils import create_estab_phrase, calculate_similarity_sentences
 from werkzeug.utils import secure_filename
-from utils import calculate_similarity_sentences, create_yelp_phrase, create_estab_phrase
 
 import pandas as pd
 import json
 import csv
 import os
+import argparse
 import datetime
 
 app = Flask(__name__)
@@ -128,7 +128,6 @@ def get_categories():
 def update_categories_csv():
     data = request.get_json()
     categories = data.get('categories')
-    print(categories)
 
     csv_file_path = 'static/data/input/categories_request.csv'
 
@@ -245,6 +244,8 @@ def enrichment_categories():
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['category', 'matching_phrase'])
             for cat in categories:
+                if not isinstance(cat, dict):
+                    return jsonify({'error': 'Invalid data structure. Each category must be a dictionary.'}), 400
                 category = cat.get('category', '')
                 phrase = cat.get('matching_phrase', '') or category
                 writer.writerow([category, phrase])
@@ -297,7 +298,8 @@ def upload_dataset():
             missing_columns = required_columns - set(df.columns)
             if missing_columns:
                 os.remove(save_path)  # Remove invalid file
-                return jsonify({'error': f'Missing required columns: {missing_columns}'}), 400
+                expected_structure = ', '.join(required_columns)
+                return jsonify({'error': f'Missing required columns: {missing_columns}. Expected structure: {expected_structure}'}), 400
                 
             return jsonify({'message': 'Dataset uploaded successfully', 'filename': filename})
         except Exception as e:
@@ -423,7 +425,10 @@ def export_enriched_dataset():
         enriched_rows = []
         for _, row in df.iterrows():
             phrase_val = row[phrase_col]
-            phrase_idx = phrase_to_idx.get(str(phrase_val)) if pd.notnull(phrase_val) else None
+            try:
+                phrase_idx = phrase_to_idx.get(str(phrase_val)) if pd.notnull(phrase_val) else None
+            except TypeError:
+                phrase_idx = None
             match = match_lookup.get(phrase_idx) if phrase_idx is not None else None
             matched_phrase = phrases[phrase_idx] if phrase_idx is not None and phrase_idx < len(phrases) else None
             category_idx = match['category_idx'] if match else None
