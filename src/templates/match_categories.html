@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Match Categories</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='tables.css') }}"
+    />
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <style>
+      .match-dropdown {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+      .see-more-option {
+        color: #666;
+        font-style: italic;
+      }
+      .table-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .table-description {
+        margin-bottom: 20px;
+        color: #666;
+      }
+      .threshold-controls {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        display: none;
+      }
+      .threshold-slider {
+        width: 100%;
+        margin: 10px 0;
+      }
+      .threshold-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .threshold-label {
+        width: 120px;
+        font-weight: bold;
+      }
+      .threshold-value {
+        width: 50px;
+        text-align: center;
+        margin: 0 10px;
+      }
+      .settings-toggle {
+        cursor: pointer;
+        color: #007bff;
+        display: inline-block;
+        margin-left: 10px;
+      }
+      .settings-toggle:hover {
+        text-decoration: underline;
+      }
+      .footer-buttons {
+        margin-top: 20px;
+        text-align: center;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-primary:hover {
+        background-color: #0056b3;
+      }
+      .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+      .btn-secondary:hover {
+        background-color: #5a6268;
+      }
+      /* Ranking colors */
+      .rank-1 {
+        background-color: #91db57 !important;
+        font-weight: bold;
+      }
+      .rank-2 {
+        background-color: #57db80 !important;
+      }
+      .rank-3 {
+        background-color: #dbc257 !important;
+      }
+      .rank-4 {
+        background-color: #db5f57 !important;
+      }
+      /* Score indicator */
+      .score-indicator {
+        float: right;
+        opacity: 0.7;
+        font-size: 0.85em;
+      }
+      /* Modal styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+      }
+      .modal-content {
+        background-color: #fff;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 1000px;
+        position: relative;
+      }
+      .close-btn {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .close-btn:hover {
+        color: #000;
+      }
+      .modal-title {
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: #333;
+      }
+      .modal-footer {
+        margin-top: 20px;
+        text-align: right;
+      }
+      /* DataTable overrides for modal */
+      #matches-table_wrapper .dataTables_filter {
+        margin-bottom: 15px;
+      }
+      .match-row {
+        cursor: pointer;
+      }
+      .match-row:hover {
+        background-color: #f5f5f5;
+      }
+      .match-row.selected {
+        background-color: #e6f7ff !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="table-container">
+      <h1>Match Categories</h1>
+      <div class="table-description">
+        Match your categories with Google Places categories. The dropdown shows matches ranked from best to worst with color coding:
+        <span class="rank-1">Excellent match</span>, 
+        <span class="rank-2">Good match</span>, 
+        <span class="rank-3">Fair match</span>, 
+        <span class="rank-4">Poor match</span>.
+        <span class="settings-toggle" id="toggle-thresholds">⚙ Change thresholds</span>
+      </div>
+
+      <div class="threshold-controls" id="threshold-controls">
+        <h3>Match Score Thresholds</h3>
+        <div class="threshold-row">
+          <div class="threshold-label rank-1">Excellent (≥)</div>
+          <input type="range" class="threshold-slider" id="threshold-excellent" min="0" max="1" step="0.05" value="0.8">
+          <div class="threshold-value" id="threshold-excellent-value">0.80</div>
+        </div>
+        <div class="threshold-row">
+          <div class="threshold-label rank-2">Good (≥)</div>
+          <input type="range" class="threshold-slider" id="threshold-good" min="0" max="1" step="0.05" value="0.5">
+          <div class="threshold-value" id="threshold-good-value">0.50</div>
+        </div>
+        <div class="threshold-row">
+          <div class="threshold-label rank-3">Fair (≥)</div>
+          <input type="range" class="threshold-slider" id="threshold-fair" min="0" max="1" step="0.05" value="0.3">
+          <div class="threshold-value" id="threshold-fair-value">0.30</div>
+        </div>
+        <button id="apply-thresholds" class="btn-primary">Apply Thresholds</button>
+      </div>
+
+      <table id="match-table" class="display">
+        <thead>
+          <tr>
+            <th>Matching Phrase</th>
+            <th>Best Score</th>
+            <th>Match category phrase</th>
+            <th>Category</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="footer-buttons">
+        <button id="download-matches-btn" class="btn-primary">Download matches</button>
+        <input type="file" id="import-matches-input" accept=".json" style="display:none;" />
+        <button id="import-matches-btn" class="btn-secondary">Import matches</button>
+        <button id="export-enriched-dataset-btn" class="btn-secondary">Export enriched dataset</button>
+      </div>
+    </div>
+
+    <div id="loading-modal" style="display: none;">
+      <div class="loading-content">
+        <img
+          src="{{ url_for('static', filename='data/images/loading.webp') }}"
+          alt="Loading..."
+        />
+        <p>Loading, please wait...</p>
+      </div>
+    </div>
+
+    <!-- Add the matches modal -->
+    <div id="matches-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" id="close-matches-modal">&times;</span>
+        <h2 class="modal-title">All Matches for: <span id="current-category-name"></span></h2>
+        
+        <table id="matches-table" class="display" style="width:100%">
+          <thead>
+            <tr>
+              <th>Your Category</th>
+              <th>Match Name</th>
+              <th>Score</th>
+              <th>Rank</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        
+        <div class="modal-footer">
+          <button id="select-match-btn" class="btn-primary">Select Match</button>
+          <button id="cancel-match-btn" class="btn-outline">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      $(document).ready(function () {
+        // Encapsulated state object
+        var matchState = {
+          table: null,
+          matchesTable: null,
+          estabIdxToPhrase: [],
+          yelpIdxToPhrase: [],
+          yelpIdxToCategory: [],
+          allCategoriesData: [],
+          currentCategoryMatches: [],
+          currentDropdown: null,
+          thresholds: {
+            excellent: 0.8,
+            good: 0.5,
+            fair: 0.3
+          }
+        };
+
+        // --- Helper Functions ---
+        function calculateRank(score, thresholds) {
+          return score >= thresholds.excellent ? 1 :
+                 (score >= thresholds.good ? 2 :
+                 (score >= thresholds.fair ? 3 : 4));
+        }
+        function getRankName(rank) {
+          switch(rank) {
+            case 1: return "Excellent";
+            case 2: return "Good";
+            case 3: return "Fair";
+            case 4: return "Poor";
+            default: return "Unknown";
+          }
+        }
+        function addMatchOptionToDropdown($select, matchId, typeName, score, rank) {
+          var existingOption = $select.find('option[value="' + matchId + '"]');
+          if (existingOption.length > 0 || matchId === -1) return;
+          var scoreText = " (" + Number(score).toFixed(2) + ")";
+          var newOption = $('<option value="' + matchId + '" class="rank-' + rank + '">' + typeName + scoreText + '</option>');
+          var seeMoreOption = $select.find('option[value="more"]');
+          if (seeMoreOption.length > 0) {
+            seeMoreOption.before(newOption);
+          } else {
+            $select.append(newOption);
+          }
+        }
+        function showLoading() { $("#loading-modal").show(); }
+        function hideLoading() { $("#loading-modal").hide(); }
+
+        // --- UI Update Functions ---
+        function updateUIWithThresholds() {
+          matchState.table.clear();
+          matchState.allCategoriesData.sort(function(a, b) {
+            return Number(b.best_score) - Number(a.best_score);
+          });
+          matchState.allCategoriesData.forEach(function (category) {
+            var phraseEstablishment = matchState.estabIdxToPhrase[category.estab_idx];
+            var bestScore = category.best_score ? Number(category.best_score).toFixed(2) : "0.00";
+            var dropdown = createMatchDropdown(category);
+            var matchedCategory = '';
+            if (category.best_yelp_idx !== undefined && matchState.yelpIdxToCategory[category.best_yelp_idx]) {
+              matchedCategory = matchState.yelpIdxToCategory[category.best_yelp_idx];
+            }
+            var rowNode = matchState.table.row.add([
+              phraseEstablishment,
+              bestScore,
+              dropdown,
+              matchedCategory
+            ]).draw(false).node();
+            $(rowNode).attr('data-phrase-idx', category.estab_idx);
+          });
+          matchState.table.draw(false);
+        }
+
+        function createMatchDropdown(category) {
+          var dropdown = $('<select class="match-dropdown"></select>');
+          dropdown.append($('<option value="-1">No match</option>'));
+          if (category.matches && category.matches.length > 0) {
+            var matchesByRank = { 1: [], 2: [], 3: [], 4: [] };
+            category.matches.forEach(function(match) {
+              var rank = calculateRank(match.score, matchState.thresholds);
+              match.rank = rank;
+              matchesByRank[rank].push(match);
+            });
+            [1,2].forEach(function(rank) {
+              if (matchesByRank[rank].length > 0) {
+                var optgroup = $('<optgroup label="' + getRankName(rank) + ' Matches"></optgroup>');
+                matchesByRank[rank].forEach(function(match) {
+                  var typeName = matchState.yelpIdxToPhrase[Number(match.yelp_idx)] || "Unknown";
+                  var scoreText = " (" + Number(match.score).toFixed(2) + ")";
+                  var option = $('<option value="' + Number(match.yelp_idx) + '" class="rank-' + match.rank + '">' + typeName + '<span class="score-indicator">' + scoreText + '</span></option>');
+                  if (category.best_yelp_idx !== undefined && Number(match.yelp_idx) === Number(category.best_yelp_idx)) {
+                    option.attr('selected', 'selected');
+                  }
+                  optgroup.append(option);
+                });
+                dropdown.append(optgroup);
+              }
+            });
+            if (matchesByRank[3].length > 0 || matchesByRank[4].length > 0) {
+              dropdown.append($('<option class="see-more-option" value="more">See more matches...</option>'));
+            }
+          }
+          return dropdown.prop('outerHTML');
+        }
+
+        function extractMatchesFromTable() {
+          var matches = [];
+          $('#match-table tbody tr').each(function(rowIdx) {
+            var $row = $(this);
+            var phrase_idx = Number($row.attr('data-phrase-idx'));
+            var category = matchState.allCategoriesData[phrase_idx];
+            var dropdown = $row.find('select.match-dropdown');
+            var selectedVal = dropdown.val();
+            var matchOptions = [];
+            var matched_option_idx = -1;
+            var selected_score = null;
+            var best_score = null;
+            var best_option_score = -Infinity;
+            var best_option_idx = -1;
+            var category_idx = null;
+            if (category && Array.isArray(category.matches)) {
+              category.matches.forEach(function(opt, idx) {
+                matchOptions.push({ category_idx: opt.yelp_idx, score: opt.score });
+                if (opt.yelp_idx == selectedVal) {
+                  matched_option_idx = idx;
+                  selected_score = opt.score;
+                  category_idx = opt.yelp_idx;
+                }
+                if (opt.score > best_option_score) {
+                  best_option_score = opt.score;
+                  best_option_idx = idx;
+                }
+              });
+              best_score = best_option_score;
+              if (matched_option_idx === -1) {
+                selected_score = null;
+                category_idx = -1;
+              }
+            }
+            matches.push({
+              phrase_idx: phrase_idx,
+              category_idx: category_idx,
+              selected_score: selected_score,
+              matched_option_idx: matched_option_idx,
+              best_score: best_score,
+              match_options: matchOptions
+            });
+          });
+          return matches;
+        }
+
+        // --- Data Loading ---
+        function loadCategories() {
+          showLoading();
+          $.ajax({
+            url: "/get_categories_to_match",
+            method: "GET",
+            success: function (response) {
+              matchState.estabIdxToPhrase = response.estab_idx_to_phrase || [];
+              matchState.yelpIdxToPhrase = response.yelp_idx_to_phrase || [];
+              matchState.yelpIdxToCategory = response.yelp_idx_to_category || [];
+              matchState.allCategoriesData = response.categories || [];
+              if (matchState.allCategoriesData.length > 0) {
+                updateUIWithThresholds();
+              }
+              hideLoading();
+            },
+            error: function () {
+              hideLoading();
+              alert("Error loading categories.");
+            },
+          });
+        }
+
+        // --- DataTables Initialization ---
+        matchState.table = $("#match-table").DataTable({
+          paging: true,
+          pageLength: 12,
+          lengthChange: false,
+          info: false,
+          ordering: true,
+          order: [[1, 'asc']],
+          dom: "ft<'row'<'col-sm-12'p>>",
+          columns: [null, null, null, null]
+        });
+        matchState.matchesTable = $("#matches-table").DataTable({
+          paging: true,
+          pageLength: 10,
+          lengthChange: false,
+          searching: true,
+          info: true,
+          ordering: true,
+          order: [[2, 'desc']],
+          dom: "ft<'row'<'col-sm-12'p>>",
+          columnDefs: [{
+            targets: 3,
+            createdCell: function(cell, cellData) {
+              var rankName = cellData;
+              var rank;
+              switch(rankName) {
+                case "Excellent": rank = 1; break;
+                case "Good": rank = 2; break;
+                case "Fair": rank = 3; break;
+                case "Poor": rank = 4; break;
+                default: rank = 4;
+              }
+              $(cell).addClass('rank-' + rank);
+            }
+          }]
+        });
+
+        // --- Event Handlers ---
+        $(document).on('click', '#download-matches-btn', function() {
+          var exportObj = {
+            categories: matchState.yelpIdxToCategory ? matchState.yelpIdxToCategory.slice() : [],
+            phrases: matchState.estabIdxToPhrase ? matchState.estabIdxToPhrase.slice() : [],
+            matches: extractMatchesFromTable()
+          };
+          var jsonStr = JSON.stringify(exportObj, null, 2);
+          var now = new Date();
+          var pad = n => n.toString().padStart(2, '0');
+          var filename = `matches_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.json`;
+          var blob = new Blob([jsonStr], {type: "application/json"});
+          var link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+        $(document).on('click', '#import-matches-btn', function() {
+          $('#import-matches-input').val('');
+          $('#import-matches-input').click();
+        });
+        $(document).on('change', '#import-matches-input', function(e) {
+          var file = e.target.files[0];
+          if (!file) return;
+          var reader = new FileReader();
+          reader.onload = function(evt) {
+            try {
+              var data = JSON.parse(evt.target.result);
+              if (!data.categories || !Array.isArray(data.categories) ||
+                  !data.phrases || !Array.isArray(data.phrases) ||
+                  !data.matches || !Array.isArray(data.matches)) {
+                alert('Invalid file: missing categories, phrases, or matches array.');
+                return;
+              }
+              matchState.yelpIdxToCategory = data.categories;
+              matchState.estabIdxToPhrase = data.phrases;
+              matchState.allCategoriesData = data.matches.map(function(matchObj) {
+                var matchesArr = Array.isArray(matchObj.match_options) ? matchObj.match_options.map(function(opt) {
+                  return { yelp_idx: opt.category_idx, score: opt.score };
+                }) : [];
+                return {
+                  estab_idx: matchObj.phrase_idx,
+                  best_yelp_idx: matchObj.category_idx,
+                  best_score: matchObj.best_score,
+                  selected_score: matchObj.selected_score,
+                  matched_option_idx: matchObj.matched_option_idx,
+                  matches: matchesArr
+                };
+              });
+              updateUIWithThresholds();
+              // Restore dropdown selections
+              $('#match-table tbody tr').each(function() {
+                var $row = $(this);
+                var phrase_idx = Number($row.attr('data-phrase-idx'));
+                var matchObj = data.matches.find(m => m.phrase_idx === phrase_idx);
+                var dropdown = $row.find('select.match-dropdown');
+                if (matchObj && dropdown.length) {
+                  var selectedIdx = matchObj.category_idx;
+                  var selectedScore = matchObj.selected_score;
+                  if (selectedIdx !== -1 && dropdown.find('option[value="' + selectedIdx + '"]').length === 0) {
+                    var typeName = matchState.yelpIdxToPhrase[selectedIdx] || "Unknown";
+                    var rank = calculateRank(selectedScore, matchState.thresholds);
+                    addMatchOptionToDropdown(dropdown, selectedIdx, typeName, selectedScore, rank);
+                  }
+                  dropdown.val(selectedIdx);
+                  dropdown.trigger('change');
+                }
+              });
+              alert('Matches imported successfully.');
+            } catch (err) {
+              alert('Failed to import matches: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+        });
+        $(document).on('click', '#export-enriched-dataset-btn', function() {
+          var exportObj = {
+            categories: matchState.yelpIdxToCategory ? matchState.yelpIdxToCategory.slice() : [],
+            phrases: matchState.estabIdxToPhrase ? matchState.estabIdxToPhrase.slice() : [],
+            matches: extractMatchesFromTable()
+          };
+          var urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.has('dataset_path')) {
+            exportObj.dataset_path = urlParams.get('dataset_path');
+          }
+          showLoading();
+          $.ajax({
+            url: '/export_enriched_dataset',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(exportObj),
+            success: function(response) {
+              hideLoading();
+              if (response && response.download_url) {
+                var a = document.createElement('a');
+                a.href = response.download_url;
+                a.download = '';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              } else {
+                alert('Export failed: No download link returned.');
+              }
+            },
+            error: function(xhr) {
+              hideLoading();
+              alert('Export failed: ' + (xhr.responseText || 'Unknown error'));
+            }
+          });
+        });
+        // Thresholds UI handling
+        $("#toggle-thresholds").on("click", function() {
+          $("#threshold-controls").slideToggle();
+        });
+        $(".threshold-slider").on("input", function() {
+          var value = parseFloat($(this).val()).toFixed(2);
+          $("#" + $(this).attr("id") + "-value").text(value);
+        });
+        $("#apply-thresholds").on("click", function() {
+          var t = matchState.thresholds;
+          t.excellent = parseFloat($("#threshold-excellent").val());
+          t.good = parseFloat($("#threshold-good").val());
+          t.fair = parseFloat($("#threshold-fair").val());
+          if (t.good > t.excellent) {
+            t.good = t.excellent;
+            $("#threshold-good").val(t.good);
+            $("#threshold-good-value").text(t.good.toFixed(2));
+          }
+          if (t.fair > t.good) {
+            t.fair = t.good;
+            $("#threshold-fair").val(t.fair);
+            $("#threshold-fair-value").text(t.fair.toFixed(2));
+          }
+          updateUIWithThresholds();
+          $("#threshold-controls").slideUp();
+        });
+        // Handle "See more" option click to show the modal
+        $("#match-table").on("change", "select.match-dropdown", function() {
+          var $select = $(this);
+          if ($select.val() === "more") {
+            matchState.currentDropdown = $select;
+            var $row = $select.closest("tr");
+            var phrase_idx = Number($row.attr('data-phrase-idx'));
+            var category = matchState.allCategoriesData[phrase_idx];
+            if (category) {
+              $("#current-category-name").text(matchState.estabIdxToPhrase[phrase_idx]);
+              matchState.matchesTable.clear();
+              matchState.currentCategoryMatches = [];
+              category.matches.forEach(function(match) {
+                var rank = calculateRank(match.score, matchState.thresholds);
+                var typeName = matchState.yelpIdxToPhrase[Number(match.yelp_idx)] || "Unknown";
+                var rankName = getRankName(rank);
+                matchState.currentCategoryMatches.push(match);
+                matchState.matchesTable.row.add([
+                  matchState.estabIdxToPhrase[phrase_idx],
+                  typeName,
+                  Number(match.score).toFixed(2),
+                  rankName
+                ]).draw(false);
+              });
+              $("#matches-modal").show();
+              $select.val("-1");
+            }
+          }
+        });
+        // Update the category column when the dropdown changes
+        $("#match-table").on("change", "select.match-dropdown", function() {
+          var $select = $(this);
+          var selectedIdx = $select.val();
+          var $row = $select.closest("tr");
+          var categoryCell = $row.find("td").eq(3);
+          var matchedCategory = '';
+          if (selectedIdx !== "-1" && matchState.yelpIdxToCategory[selectedIdx]) {
+            matchedCategory = matchState.yelpIdxToCategory[selectedIdx];
+          }
+          categoryCell.text(matchedCategory);
+        });
+        // Modal controls
+        $("#close-matches-modal, #cancel-match-btn").on("click", function() {
+          $("#matches-modal").hide();
+        });
+        $("#select-match-btn").on("click", function() {
+          var selectedIndex = matchState.matchesTable.row('.selected').index();
+          if (selectedIndex !== undefined && matchState.currentDropdown) {
+            var selectedMatch = matchState.currentCategoryMatches[selectedIndex];
+            var matchId = Number(selectedMatch.yelp_idx);
+            var typeName = matchState.yelpIdxToPhrase[matchId] || "Unknown";
+            var score = selectedMatch.score;
+            var rank = calculateRank(score, matchState.thresholds);
+            addMatchOptionToDropdown(matchState.currentDropdown, matchId, typeName, score, rank);
+            matchState.currentDropdown.val(matchId).trigger('change');
+            $("#matches-modal").hide();
+          } else {
+            alert("Please select a match from the table.");
+          }
+        });
+        $('#matches-table tbody').on('click', 'tr', function() {
+          if ($(this).hasClass('selected')) {
+            $(this).removeClass('selected');
+          } else {
+            matchState.matchesTable.$('tr.selected').removeClass('selected');
+            $(this).addClass('selected');
+          }
+        });
+        $('#matches-table tbody').on('dblclick', 'tr', function() {
+          $(this).addClass('selected');
+          $("#select-match-btn").click();
+        });
+        // Initial load
+        loadCategories();
+      });
+    </script>
+  </body>
+</html>

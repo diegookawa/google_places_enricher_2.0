@@ -21,6 +21,7 @@ sentence-transformers = "^3.4.1"
 
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^6.10.0"
+ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core"]
