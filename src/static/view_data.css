@@ -20,7 +20,7 @@ h1 {
   text-align: center;
 }
 
-.content-description {
+.description {
   font-size: 14px;
   color: #666;
   margin-bottom: 10px;
@@ -39,7 +39,7 @@ h1 {
 
 .chart-container {
   width: 100%;
-  margin: 20px 0;
+  margin: 10px 0;
 }
 
 .chart-container canvas {
@@ -60,8 +60,8 @@ h1 {
   gap: 20px;
 }
 
-.col {
-  flex: 1 1 45%;
+.col-small {
+  flex: 1 1 calc(33.33% - 20px);
   box-sizing: border-box;
 }
 
@@ -75,27 +75,4 @@ footer {
   background-color: #007bff;
   color: white;
   margin-top: 20px;
-}
-
-/* Style for buttons */
-.btn {
-  padding: 10px 20px;
-  margin: 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  transition: background-color 0.3s;
-}
-
-.btn:hover {
-  background-color: #007bff;
-}
-
-.btn-group {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
 }

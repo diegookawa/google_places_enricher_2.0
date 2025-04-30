@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Interactive Table</title>
+    <title>Google Places Enricher 2.0</title>
     <link
       rel="stylesheet"
       href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"
@@ -29,7 +29,7 @@
           <button class="btn-primary" id="add-new-value-btn">
             + Add establishment
           </button>
-          <a href="/view_data" class="btn-primary">View Data</a>
+          <button id="view-data-btn" class="btn-primary">View Data</button>
         </div>
       </div>
       <table id="table" class="display">
@@ -184,8 +184,8 @@
                   row.types &&
                   row.user_ratings_total &&
                   row.vicinity &&
-                  row.categories && // Verifica a existência de categories
-                  row.price_level // Verifica a existência de price_level
+                  row.categories &&
+                  row.price_level
                 ) {
                   table.row
                     .add([
@@ -199,8 +199,8 @@
                       row.types,
                       row.user_ratings_total,
                       row.vicinity,
-                      row.categories, // Adiciona categories à linha
-                      row.price_level, // Adiciona price_level à linha
+                      row.categories,
+                      row.price_level,
                     ])
                     .draw(false);
                 }
@@ -210,6 +210,11 @@
           error: function (error) {
             console.error("Error loading CSV", error);
           },
+        });
+
+        $("#view-data-btn").on("click", function () {
+          window.location.href = "/view_data";
+         
         });
 
         $("#delete-btn").on("click", function () {

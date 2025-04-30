@@ -182,7 +182,7 @@
         southwestCoord = location;
         document.getElementById("southwest-lat").value = southwestCoord.lat();
         document.getElementById("southwest-lng").value = southwestCoord.lng();
-        placeMarker(location); //This will be cleared when calling reorderCoordinates()
+        placeMarker(location);
         reorderCoordinates();
       }
 
@@ -205,9 +205,7 @@
           Math.min(oldNortheastCoord.lat(), oldSouthwestCoord.lat()),
           Math.min(oldNortheastCoord.lng(), oldSouthwestCoord.lng())
         );
-
-        // This will rerender the markers on the correct northeast and southwest coordinates,
-        // however it may disrupt the user experience if the user doesn't expect this.  
+ 
         clearMarkers();
         placeMarker(northeastCoord);
         placeMarker(southwestCoord);

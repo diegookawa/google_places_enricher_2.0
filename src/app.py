@@ -3,7 +3,6 @@ from dotenv import load_dotenv, set_key
 from flows import calculate_coordinates, request_google_places
 from utils import create_estab_phrase, calculate_similarity_sentences
 from werkzeug.utils import secure_filename
-
 import pandas as pd
 import json
 import csv
@@ -127,6 +126,8 @@ def update_categories_csv():
     csv_file_path = 'static/data/input/categories_request.csv'
 
     try:
+        print(f"Received categories: {categories}")
+
         with open(csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['category'])
@@ -134,6 +135,8 @@ def update_categories_csv():
                 writer.writerow(cat) 
         
         result = request_google_places()
+        print(f"Result from request_google_places: {result}")
+
         if not result:
             return jsonify({"error": "Google Places API returned no response"}), 500
         if "successfully" not in result.lower():
@@ -142,6 +145,7 @@ def update_categories_csv():
         return jsonify({"message": "CSV updated successfully"}), 200 
 
     except Exception as e:
+        print(f"Exception occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
