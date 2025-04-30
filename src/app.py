@@ -33,15 +33,15 @@ def view_data():
         try:
             data = pd.read_csv(csv_path)
         except FileNotFoundError:
-            return f"Erro: Arquivo {csv_path} não encontrado."
+            return f"Error: File {csv_path} not found."
         except Exception as e:
-            return f"Erro ao ler o arquivo CSV: {str(e)}"
+            return f"Error reading the CSV file: {str(e)}"
 
         required_columns = {'place_id', 'categories', 'lat', 'lon', 'business_status', 
                             'name', 'price_level', 'rating', 'types', 'user_ratings_total', 'vicinity'}
         missing_columns = required_columns - set(data.columns)
         if missing_columns:
-            return f"Erro: Colunas ausentes no CSV: {missing_columns}"
+            return f"Error: Missing columns in CSV: {missing_columns}"
 
         data.fillna({
             "rating": 0,
@@ -79,15 +79,7 @@ def view_data():
         )
 
     except Exception as e:
-        return f"Erro inesperado: {str(e)}"
-
-# @app.route('/call_google_places_api', methods=['POST'])
-# def call_api():
-#     result = request_google_places()
-#     if "successfully" not in result.lower():
-#         return jsonify({"error": result}), 500
-
-#     return jsonify({"message": "CSV updated and Google Places API called successfully!"}), 200
+        return f"Unexpected error: {str(e)}"
 
 @app.route('/update_coordinates_csv', methods=['POST'])
 def update_coordinates_csv():
@@ -129,6 +121,9 @@ def update_categories_csv():
     data = request.get_json()
     categories = data.get('categories')
 
+    if not categories:
+        return jsonify({"error": "No categories provided"}), 400 
+
     csv_file_path = 'static/data/input/categories_request.csv'
 
     try:
@@ -139,8 +134,12 @@ def update_categories_csv():
                 writer.writerow(cat) 
         
         result = request_google_places()
+        if not result:
+            return jsonify({"error": "Google Places API returned no response"}), 500
         if "successfully" not in result.lower():
             return jsonify({"error": result}), 500
+
+        return jsonify({"message": "CSV updated successfully"}), 200 
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -254,13 +253,6 @@ def enrichment_categories():
         return jsonify({'error': str(e)}), 500
 
     return jsonify({'message': 'Categories updated successfully.'}), 200
-
-def validate_path(path):
-    """Validate that a path is within the allowed directory"""
-    output_dir = os.path.abspath('static/data/output')
-    abs_path = os.path.abspath(path)
-    common_prefix = os.path.commonpath([output_dir, abs_path])
-    return common_prefix == output_dir
 
 @app.route('/get_available_datasets', methods=['GET'])
 def get_available_datasets():
@@ -454,4 +446,8 @@ def export_enriched_dataset():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
-    app.run()
+    parser = argparse.ArgumentParser(description='Run the Flask application')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run the application on')
+    args = parser.parse_args()
+    
+    app.run(host='127.0.0.1', port=args.port)
