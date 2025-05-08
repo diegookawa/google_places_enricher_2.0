@@ -193,6 +193,19 @@ def coordinates_results():
     file_name = request.args.get("file", "../data/output/lat_lon_calculated.csv")
     return render_template("coordinates_result.html", file_name=file_name)
 
+@app.route('/upload_csv', methods=['POST'])
+def upload_csv():
+    file = request.files.get('csv-file')
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    df = pd.read_csv(file)
+    categories = df.iloc[:, 0].dropna().tolist()
+
+    df.to_csv('static/data/input/categories_request.csv', index=False)
+
+    return jsonify({"message": "Upload successful", "categories": categories})
+
 @app.route('/categories', methods=['GET', 'POST'])
 def categories():
     if request.method == 'POST':
