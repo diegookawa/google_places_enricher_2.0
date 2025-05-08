@@ -53,7 +53,7 @@
       <button id="continue-btn" class="btn-primary">Process Data</button>
     </div>
 
-    <div id="loading-modal" style="display: none;">
+    <div id="loading-modal" style="display: none">
       <div class="loading-content">
         <img
           src="{{ url_for('static', filename='data/images/loading.webp') }}"
@@ -63,12 +63,17 @@
       </div>
     </div>
 
-    <div id="main-modal" class="modal" style="display: none;">
+    <div id="main-modal" class="modal" style="display: none">
       <div class="modal-content">
         <span class="close-btn" id="close-modal">&times;</span>
         <h2>Add Category</h2>
         <label for="category">Category:</label>
-        <input type="text" id="category" placeholder="Enter category name" required />
+        <input
+          type="text"
+          id="category"
+          placeholder="Enter category name"
+          required
+        />
         <div class="modal-buttons">
           <button id="submit-btn" class="btn-primary">Add Category</button>
           <button id="cancel-btn" class="btn-outline">Cancel</button>
@@ -81,10 +86,10 @@
         var table = $("#table").DataTable({
           paging: true,
           pageLength: 12,
-          lengthChange: false, 
+          lengthChange: false,
           info: false,
-          ordering: true, 
-          dom: "ft<'row'<'col-sm-12'p>>", 
+          ordering: true,
+          dom: "ft<'row'<'col-sm-12'p>>",
         });
 
         function showLoading() {
@@ -120,6 +125,27 @@
 
         loadCategories();
 
+        $("#csv-upload-form").on("submit", function (e) {
+          e.preventDefault();
+
+          var formData = new FormData(this);
+
+          $.ajax({
+            url: "/upload_csv",
+            type: "POST",
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+              loadCategories();
+              
+            },
+            error: function () {
+              alert("An error occurred during the upload.");
+            },
+          });
+        });
+
         $("#add-new-value-btn").on("click", function () {
           $("#main-modal").show();
         });
@@ -131,10 +157,9 @@
         $("#submit-btn").on("click", function () {
           var category = $("#category").val().trim();
           if (category) {
-            table.row.add([
-              '<input type="checkbox" class="row-checkbox">',
-              category
-            ]).draw(false);
+            table.row
+              .add(['<input type="checkbox" class="row-checkbox">', category])
+              .draw(false);
             $("#category").val("");
             $("#main-modal").hide();
           } else {
