@@ -115,8 +115,8 @@ def get_categories():
 
     return jsonify({'categories': categories})
 
-@app.route('/update_categories_csv', methods=['POST'])
-def update_categories_csv():
+@app.route('/update_categories_and_process_data', methods=['POST'])
+def update_categories_and_process_data():
     data = request.get_json()
     categories = data.get('categories')
 
