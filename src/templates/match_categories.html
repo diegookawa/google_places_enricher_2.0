@@ -309,16 +309,18 @@
         // --- UI Update Functions ---
         function updateUIWithThresholds() {
           matchState.table.clear();
-          matchState.allCategoriesData.sort(function(a, b) {
-            return Number(b.best_score) - Number(a.best_score);
-          });
+          // Always use sorted matches to determine best score/category for consistency
           matchState.allCategoriesData.forEach(function (category) {
             var phraseEstablishment = matchState.estabIdxToPhrase[category.estab_idx];
-            var bestScore = category.best_score ? Number(category.best_score).toFixed(2) : "0.00";
+            var sortedMatches = (category.matches || []).slice().sort(function(a, b) {
+              return Number(b.score) - Number(a.score);
+            });
+            var bestScore = sortedMatches.length > 0 ? Number(sortedMatches[0].score).toFixed(2) : "0.00";
+            var bestYelpIdx = sortedMatches.length > 0 ? sortedMatches[0].yelp_idx : -1;
             var dropdown = createMatchDropdown(category);
             var matchedCategory = '';
-            if (category.best_yelp_idx !== undefined && matchState.yelpIdxToCategory[category.best_yelp_idx]) {
-              matchedCategory = matchState.yelpIdxToCategory[category.best_yelp_idx];
+            if (bestYelpIdx !== -1 && matchState.yelpIdxToCategory[bestYelpIdx]) {
+              matchedCategory = matchState.yelpIdxToCategory[bestYelpIdx];
             }
             var rowNode = matchState.table.row.add([
               phraseEstablishment,
@@ -335,8 +337,12 @@
           var dropdown = $('<select class="match-dropdown"></select>');
           dropdown.append($('<option value="-1">No match</option>'));
           if (category.matches && category.matches.length > 0) {
+            // Always sort matches by score descending for consistency
+            var sortedMatches = category.matches.slice().sort(function(a, b) {
+              return Number(b.score) - Number(a.score);
+            });
             var matchesByRank = { 1: [], 2: [], 3: [], 4: [] };
-            category.matches.forEach(function(match) {
+            sortedMatches.forEach(function(match) {
               var rank = calculateRank(match.score, matchState.thresholds);
               match.rank = rank;
               matchesByRank[rank].push(match);
@@ -439,7 +445,7 @@
           lengthChange: false,
           info: false,
           ordering: true,
-          order: [[1, 'asc']],
+          order: [[1, 'desc']],
           dom: "ft<'row'<'col-sm-12'p>>",
           columns: [null, null, null, null]
         });
@@ -619,7 +625,11 @@
               $("#current-category-name").text(matchState.estabIdxToPhrase[phrase_idx]);
               matchState.matchesTable.clear();
               matchState.currentCategoryMatches = [];
-              category.matches.forEach(function(match) {
+              // Always sort matches by score descending to match main table logic
+              var sortedMatches = (category.matches || []).slice().sort(function(a, b) {
+                return Number(b.score) - Number(a.score);
+              });
+              sortedMatches.forEach(function(match) {
                 var rank = calculateRank(match.score, matchState.thresholds);
                 var typeName = matchState.yelpIdxToPhrase[Number(match.yelp_idx)] || "Unknown";
                 var rankName = getRankName(rank);
