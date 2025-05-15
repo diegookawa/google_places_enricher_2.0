@@ -337,7 +337,8 @@ def get_categories_to_match():
         
         google_data = pd.read_csv(dataset_full_path)
         df_estab_phrases = create_estab_phrase(google_data)
-        df_estab_phrases_uniques = df_estab_phrases.drop_duplicates(subset="phrase_establishment")[['phrase_establishment']]
+        
+        df_estab_phrases_uniques = df_estab_phrases.drop_duplicates(subset="phrase_establishment")[['phrase_establishment', 'category']]
         df_estab_phrases_uniques['words_phrase_estab'] = df_estab_phrases_uniques['phrase_establishment'].apply(lambda phrase: len(str(phrase).split(' ')))
         df_estab_phrases_uniques = df_estab_phrases_uniques[df_estab_phrases_uniques['words_phrase_estab'] > 1]
         df_estab_phrases_uniques = df_estab_phrases_uniques.reset_index(drop=True)
@@ -354,6 +355,7 @@ def get_categories_to_match():
         sim_df = calculate_similarity_sentences(df_estab_phrases_uniques['phrase_establishment'], yelp_phrases)
         # Build index-to-string maps, replacing NaN with None
         estab_idx_to_phrase = [str(v) if pd.notnull(v) else None for k, v in df_estab_phrases_uniques['phrase_establishment'].to_dict().items()]
+        estab_idx_to_category = [str(v) if pd.notnull(v) else None for k, v in df_estab_phrases_uniques['category'].to_dict().items()]
         yelp_idx_to_phrase = [str(v) if pd.notnull(v) else None for k, v in yelp_phrases.reset_index(drop=True).to_dict().items()]
         yelp_idx_to_category = [str(v) if pd.notnull(v) else None for k, v in df_enrichment['category'].reset_index(drop=True).to_dict().items()]
 
@@ -394,6 +396,7 @@ def get_categories_to_match():
         response_data = {
             'categories': categories_with_matches,
             'estab_idx_to_phrase': estab_idx_to_phrase,
+            'estab_idx_to_category': estab_idx_to_category,
             'yelp_idx_to_phrase': yelp_idx_to_phrase,
             'yelp_idx_to_category': yelp_idx_to_category
         }

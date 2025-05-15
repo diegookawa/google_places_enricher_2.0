@@ -205,7 +205,7 @@
       <table id="match-table" class="display">
         <thead>
           <tr>
-            <th>Matching Phrase</th>
+            <th>Category</th>
             <th>Best Score</th>
             <th>Match category phrase</th>
             <th>Category</th>
@@ -311,7 +311,8 @@
           matchState.table.clear();
           // Always use sorted matches to determine best score/category for consistency
           matchState.allCategoriesData.forEach(function (category) {
-            var phraseEstablishment = matchState.estabIdxToPhrase[category.estab_idx];
+            //var phraseEstablishment = matchState.estabIdxToPhrase[category.estab_idx];
+            var categoryName = matchState.estabIdxToCategory[category.estab_idx];
             var sortedMatches = (category.matches || []).slice().sort(function(a, b) {
               return Number(b.score) - Number(a.score);
             });
@@ -323,7 +324,7 @@
               matchedCategory = matchState.yelpIdxToCategory[bestYelpIdx];
             }
             var rowNode = matchState.table.row.add([
-              phraseEstablishment,
+              categoryName,
               bestScore,
               dropdown,
               matchedCategory
@@ -423,6 +424,7 @@
             method: "GET",
             success: function (response) {
               matchState.estabIdxToPhrase = response.estab_idx_to_phrase || [];
+              matchState.estabIdxToCategory = response.estab_idx_to_category || [];
               matchState.yelpIdxToPhrase = response.yelp_idx_to_phrase || [];
               matchState.yelpIdxToCategory = response.yelp_idx_to_category || [];
               matchState.allCategoriesData = response.categories || [];
