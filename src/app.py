@@ -4,7 +4,7 @@ from flows import calculate_coordinates, request_google_places
 from utils import create_estab_phrase, calculate_similarity_sentences
 from werkzeug.utils import secure_filename
 import pandas as pd
-import json
+import numpy as np
 import csv
 import os
 import argparse
@@ -325,7 +325,7 @@ def get_categories_to_match():
         enrichment_file = 'static/data/input/enrichment_categories.csv'
         if not os.path.exists(enrichment_file):
             return jsonify({'error': 'Enrichment categories file not found'}), 404
-        
+
         df_enrichment = pd.read_csv(enrichment_file, delimiter=';')
         if 'matching_phrase' not in df_enrichment.columns:
             df_enrichment['matching_phrase'] = df_enrichment['category']
@@ -334,73 +334,57 @@ def get_categories_to_match():
         dataset_full_path = os.path.join('static/data/output', dataset_path)
         if not os.path.exists(dataset_full_path):
             return jsonify({'error': f'Dataset {dataset_path} not found'}), 404
-        
+
         google_data = pd.read_csv(dataset_full_path)
         df_estab_phrases = create_estab_phrase(google_data)
-        
-        df_estab_phrases_uniques = df_estab_phrases.drop_duplicates(subset="phrase_establishment")[['phrase_establishment', 'category']]
-        df_estab_phrases_uniques['words_phrase_estab'] = df_estab_phrases_uniques['phrase_establishment'].apply(lambda phrase: len(str(phrase).split(' ')))
-        df_estab_phrases_uniques = df_estab_phrases_uniques[df_estab_phrases_uniques['words_phrase_estab'] > 1]
-        df_estab_phrases_uniques = df_estab_phrases_uniques.reset_index(drop=True)
 
-        yelp_phrases = df_enrichment['matching_phrase']
-        # Ensure all phrases are strings
-        if not all(isinstance(p, str) for p in df_estab_phrases_uniques['phrase_establishment']):
-            bad_types = [(i, type(p).__name__, p) for i, p in enumerate(df_estab_phrases_uniques['phrase_establishment']) if not isinstance(p, str)]
-            return jsonify({'error': f'All establishment phrases must be strings. Found non-string values at: {bad_types}'}), 400
-        if not all(isinstance(p, str) for p in yelp_phrases):
-            bad_types = [(i, type(p).__name__, p) for i, p in enumerate(yelp_phrases) if not isinstance(p, str)]
-            return jsonify({'error': f'All matching phrases must be strings. Found non-string values at: {bad_types}'}), 400
+        # Filter unique, multi-word establishment phrases
+        df_estab = (
+            df_estab_phrases
+            .drop_duplicates(subset="phrase_establishment")[['phrase_establishment', 'category']]
+            .assign(words_phrase_estab=lambda df: df['phrase_establishment'].apply(lambda phrase: len(str(phrase).split(' '))))
+        )
+        df_estab = df_estab[df_estab['words_phrase_estab'] > 1].reset_index(drop=True)
 
-        sim_df = calculate_similarity_sentences(df_estab_phrases_uniques['phrase_establishment'], yelp_phrases)
-        # Build index-to-string maps, replacing NaN with None
-        estab_idx_to_phrase = [str(v) if pd.notnull(v) else None for k, v in df_estab_phrases_uniques['phrase_establishment'].to_dict().items()]
-        estab_idx_to_category = [str(v) if pd.notnull(v) else None for k, v in df_estab_phrases_uniques['category'].to_dict().items()]
-        yelp_idx_to_phrase = [str(v) if pd.notnull(v) else None for k, v in yelp_phrases.reset_index(drop=True).to_dict().items()]
-        yelp_idx_to_category = [str(v) if pd.notnull(v) else None for k, v in df_enrichment['category'].reset_index(drop=True).to_dict().items()]
+        # Use pandas to ensure all relevant columns are strings
+        estab_phrases = df_estab['phrase_establishment'].astype(str).tolist()
+        estab_categories = df_estab['category'].astype(str).tolist()
+        yelp_phrases = df_enrichment['matching_phrase'].astype(str).tolist()
+        yelp_categories_col = df_enrichment['category'].astype(str).tolist()
 
-        # For each establishment phrase, collect all matches sorted by score
-        matches_by_estab = {}
-        for row in sim_df.itertuples(index=False):
-            estab_idx = row.estab_idx
-            yelp_idx = row.yelp_idx
-            score = row.score
-            if estab_idx not in matches_by_estab:
-                matches_by_estab[estab_idx] = []
-            matches_by_estab[estab_idx].append({'yelp_idx': int(yelp_idx), 'score': float(score)})
+        # Build yelp_categories as array of [category, phrase]
+        yelp_categories = [[cat, phr] for cat, phr in zip(yelp_categories_col, yelp_phrases)]
 
-        # Prepare response: for each estab_idx, include its phrase, best match, and all matches (by index)
-        categories_with_matches = []
-        for estab_idx, matches in matches_by_estab.items():
-            matches_sorted = sorted(matches, key=lambda x: x['score'], reverse=True)
-            best_match = matches_sorted[0] if matches_sorted else None
-            best_yelp_idx = best_match['yelp_idx'] if best_match else -1
-            best_score = best_match['score'] if best_match else 0
-            categories_with_matches.append({
-                'estab_idx': int(estab_idx),
-                'phrase_establishment': estab_idx_to_phrase[estab_idx],
-                'best_yelp_idx': best_yelp_idx,
-                'best_score': best_score,
-                'matches': matches_sorted
+        # Calculate similarities
+        sim_df = calculate_similarity_sentences(estab_phrases, yelp_phrases)
+
+        # Build establishment_phrases as per spec
+        establishment_phrases = []
+        for estab_idx, (category, phrase) in enumerate(zip(estab_categories, estab_phrases)):
+            matches = sim_df[sim_df.estab_idx == estab_idx]
+            options = []
+            for row in matches.itertuples(index=False):
+                score = float(row.score)
+                if not pd.notnull(score) or not np.isfinite(score):
+                    score = -1.0
+                options.append({"category_index": int(row.yelp_idx), "score": score})
+            options_sorted = sorted(options, key=lambda x: x['score'], reverse=True)
+            best_score = options_sorted[0]['score'] if options_sorted else -1.0
+            selected_option = 0 if options_sorted else None
+            selected_score = options_sorted[0]['score'] if options_sorted else -1.0
+            establishment_phrases.append({
+                "category": category,
+                "phrase": phrase,
+                "best_score": best_score,
+                "selected_score": selected_score,
+                "selected_option": selected_option,
+                "options": options_sorted
             })
-        # Replace NaN with None in the response for JSON compatibility
-        import math
-        def clean_json(obj):
-            if isinstance(obj, dict):
-                return {k: clean_json(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [clean_json(v) for v in obj]
-            elif isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
-                return None
-            return obj
+
         response_data = {
-            'categories': categories_with_matches,
-            'estab_idx_to_phrase': estab_idx_to_phrase,
-            'estab_idx_to_category': estab_idx_to_category,
-            'yelp_idx_to_phrase': yelp_idx_to_phrase,
-            'yelp_idx_to_category': yelp_idx_to_category
+            "establishment_phrases": establishment_phrases,
+            "yelp_categories": yelp_categories
         }
-        response_data = clean_json(response_data)
         return jsonify(response_data)
     except Exception as e:
         print(f"Error in get_categories_to_match: {str(e)}")
@@ -410,9 +394,8 @@ def get_categories_to_match():
 def export_enriched_dataset():
     try:
         data = request.get_json()
-        categories = data.get('categories', [])
-        phrases = data.get('phrases', [])
-        matches = data.get('matches', [])
+        establishment_phrases = data.get('establishment_phrases', [])
+        yelp_categories = data.get('yelp_categories', [])
         dataset_path = data.get('dataset_path', 'establishments.csv')
         dataset_full_path = os.path.join('static/data/output', dataset_path)
         if not os.path.exists(dataset_full_path):
@@ -428,29 +411,29 @@ def export_enriched_dataset():
         if not phrase_col:
             from utils import create_estab_phrase
             df_phrases = create_estab_phrase(df)
-            # Merge generated phrases into df
             df = df.merge(df_phrases, on='place_id', how='left')
             phrase_col = 'phrase_establishment'
-        # Build phrase -> idx lookup
-        phrase_to_idx = {p: i for i, p in enumerate(phrases)}
-        match_lookup = {m['phrase_idx']: m for m in matches}
+        # Build phrase -> establishment_phrase object lookup
+        phrase_to_obj = {ep['phrase']: ep for ep in establishment_phrases}
         enriched_rows = []
-        for _, row in df.iterrows():
+        for idx, row in df.iterrows():
             phrase_val = row[phrase_col]
-            try:
-                phrase_idx = phrase_to_idx.get(str(phrase_val)) if pd.notnull(phrase_val) else None
-            except TypeError:
-                phrase_idx = None
-            match = match_lookup.get(phrase_idx) if phrase_idx is not None else None
-            matched_phrase = phrases[phrase_idx] if phrase_idx is not None and phrase_idx < len(phrases) else None
-            category_idx = match['category_idx'] if match else None
-            matched_category = categories[category_idx] if category_idx is not None and category_idx != -1 and category_idx < len(categories) else None
-            selected_score = match['selected_score'] if match else None
-            best_score = match['best_score'] if match else None
+            establishment_phrases = phrase_to_obj.get(str(phrase_val)) if pd.notnull(phrase_val) else None
+            matched_phrase = establishment_phrases['phrase'] if establishment_phrases else None
+            selected_option = establishment_phrases['selected_option'] if establishment_phrases and 'selected_option' in establishment_phrases and establishment_phrases['selected_option'] is not None and establishment_phrases['selected_option'] >= 0 else None
+            selected_score = None
+            best_score = establishment_phrases['best_score'] if establishment_phrases else None
+            category_index = None
+            matched_category = None
+            if establishment_phrases and selected_option is not None and isinstance(establishment_phrases.get('options'), list) and selected_option < len(establishment_phrases['options']):
+                selected_opt = establishment_phrases['options'][selected_option]
+                selected_score = selected_opt['score']
+                category_index = selected_opt['category_index']
+                if category_index is not None and category_index < len(yelp_categories):
+                    matched_category = yelp_categories[category_index][0]
             enriched_row = row.to_dict()
-            enriched_row['phrase_idx'] = phrase_idx
             enriched_row['matched_phrase'] = matched_phrase
-            enriched_row['category_idx'] = category_idx
+            enriched_row['category_index'] = category_index
             enriched_row['matched_category'] = matched_category
             enriched_row['selected_score'] = selected_score
             enriched_row['best_score'] = best_score
