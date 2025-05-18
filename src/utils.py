@@ -400,6 +400,7 @@ def create_estab_phrase(df_estab):
 
     place_id = []
     phrase_list = []
+    category_list = []
 
     for row in df_categories_estab.iterrows():
         for cat_enrich in row[1]['categories_enrichment']:
@@ -408,9 +409,11 @@ def create_estab_phrase(df_estab):
                 phrase = phrase + ' ' + cat_google
             place_id.append(row[1]['place_id'])
             phrase_list.append(phrase)
+            category_list.append(cat_enrich)
     
     df_categories_estab_phrases = pd.DataFrame()
     df_categories_estab_phrases['place_id'] = place_id
+    df_categories_estab_phrases['category'] = category_list
     df_categories_estab_phrases['phrase_establishment'] = phrase_list
     df_categories_estab_phrases['phrase_establishment'] = df_categories_estab_phrases['phrase_establishment'].apply(lambda phrase: phrase.replace(',', ''))
 
