@@ -237,11 +237,13 @@
       <div class="modal-content">
         <span class="close-btn" id="close-matches-modal">&times;</span>
         <h2 class="modal-title">All Matches for: <span id="current-category-name"></span></h2>
-        
+        <div class="modal-phrase" style="margin-bottom: 16px; color: #666;">
+          Phrase used for matching: <span id="current-category-phrase"></span>
+        </div>
         <table id="matches-table" class="display" style="width:100%">
           <thead>
             <tr>
-              <th>Your Category</th>
+              <th>Category</th>
               <th>Match Name</th>
               <th>Score</th>
               <th>Rank</th>
@@ -312,12 +314,18 @@
               return Number(b.score) - Number(a.score);
             });
             var bestScore = sortedOptions.length > 0 ? Number(sortedOptions[0].score).toFixed(2) : "0.00";
-            var bestCategoryIndex = sortedOptions.length > 0 ? sortedOptions[0].category_index : -1;
             var dropdown = createMatchDropdown(establishmentPhrase, phraseIndex);
             var matchedCategory = '';
-            if (bestCategoryIndex !== -1 && matchState.yelp_categories[bestCategoryIndex]) {
-              //TODO: Don't show the category name if "No match" is selected
-              matchedCategory = matchState.yelp_categories[bestCategoryIndex][0];
+            // Use selected_option for matchedCategory
+            var selectedOptionIdx = establishmentPhrase.selected_option;
+            if (
+              selectedOptionIdx !== undefined &&
+              selectedOptionIdx !== -1 &&
+              establishmentPhrase.options &&
+              establishmentPhrase.options[selectedOptionIdx] &&
+              matchState.yelp_categories[establishmentPhrase.options[selectedOptionIdx].category_index]
+            ) {
+              matchedCategory = matchState.yelp_categories[establishmentPhrase.options[selectedOptionIdx].category_index][0];
             }
             var rowNode = matchState.table.row.add([
               establishmentPhrase.category,
@@ -408,6 +416,13 @@
             success: function (response) {
               matchState.establishment_phrases = response.establishment_phrases || [];
               matchState.yelp_categories = response.yelp_categories || [];
+              // Apply threshold: if first option's score < good, set selected_option = -1
+              matchState.establishment_phrases.forEach(function (establishmentPhrase) {
+                if (!establishmentPhrase.options || establishmentPhrase.options.length === 0 ||
+                    Number(establishmentPhrase.options[0].score) < matchState.thresholds.good) {
+                  establishmentPhrase.selected_option = -1;
+                }
+              });
               if (matchState.establishment_phrases.length > 0) {
                 updateUIWithThresholds();
               }
@@ -590,7 +605,8 @@
             var establishmentPhraseIndex = Number($row.attr('data-establishment-phrase-idx'));
             var establishmentPhrase = matchState.establishment_phrases[establishmentPhraseIndex];
             if (establishmentPhrase) {
-              $("#current-category-name").text(establishmentPhrase.phrase);
+              $("#current-category-name").text(establishmentPhrase.category);
+              $("#current-category-phrase").text(establishmentPhrase.phrase);
               matchState.matchesTable.clear();
               matchState.currentCategoryMatches = [];
               var sortedOptions = (establishmentPhrase.options || []).slice().sort(function(a, b) {
@@ -602,7 +618,7 @@
                 var rankName = getRankName(rank);
                 matchState.currentCategoryMatches.push(optionObj);
                 matchState.matchesTable.row.add([
-                  establishmentPhrase.phrase,
+                  establishmentPhrase.category,
                   typeName,
                   Number(optionObj.score).toFixed(2),
                   rankName
