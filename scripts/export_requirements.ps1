@@ -5,4 +5,4 @@
 # To disable this warning run 'poetry config warnings.export false'.
 # pipx inject poetry poetry-plugin-export
 poetry export --format=requirements.txt --output=requirements.txt --without-hashes
-Write-Host "requirements.txt generated at project root."
+Write-Output "requirements.txt generated at project root."
