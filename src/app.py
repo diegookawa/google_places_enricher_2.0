@@ -93,7 +93,7 @@ def update_coordinates_csv():
             writer.writerow(['lat', 'lon'])
             for coord in coordinates:
                 writer.writerow(coord)
-            
+        return jsonify({"message": "Coordinates updated successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -236,13 +236,19 @@ def get_enrichment_categories():
 
     try:
         with open(file_path, newline='', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile, delimiter=';')
-            for row in reader:
-                cat = row.get('category', '')
-                phrase = row.get('matching_phrase', '')
-                if not phrase:
-                    phrase = cat
-                categories.append({'category': cat, 'matching_phrase': phrase})
+            try:
+                reader = csv.DictReader(csvfile, delimiter=';')
+                expected_fields = {'category', 'matching_phrase'}
+                if not expected_fields.issubset(set(reader.fieldnames or [])):
+                    return jsonify({'error': 'Malformed CSV: missing required columns'}), 500
+                for row in reader:
+                    cat = row.get('category', '')
+                    phrase = row.get('matching_phrase', '')
+                    if not phrase:
+                        phrase = cat
+                    categories.append({'category': cat, 'matching_phrase': phrase})
+            except csv.Error as e:
+                return jsonify({'error': f'CSV parsing error: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
