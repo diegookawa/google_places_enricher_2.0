@@ -87,7 +87,7 @@
 ## 3. Mocking & Isolation
 
 - Use `tmp_path` for all file operations.
-- Monkeypatch environment variables and file paths.
+- Patch `CONFIG_PATH` in the config module to use a temporary config file for test isolation.
 - Mock utility functions (`request_google_places`, `calculate_coordinates`, etc.) as needed.
 
 ## 4. Edge Cases
@@ -106,5 +106,5 @@
 
 - **Security:** Test for directory traversal, unsafe file names, and allowed file types.
 - **HTTP Method Restrictions:** Ensure endpoints reject unsupported methods.
-- **Environment Variable Management:** Test reading/writing of environment variables and persistence.
+- **Configuration Management:** Test reading/writing of config values via `get_config_value`/`set_config_value` and persistence in `config.json`. In tests, patch `CONFIG_PATH` to use a temporary config file for isolation.
 - **Concurrency:** Simulate simultaneous uploads/writes.

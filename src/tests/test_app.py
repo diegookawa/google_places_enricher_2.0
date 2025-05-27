@@ -9,7 +9,8 @@ import pytest
 from flask import url_for
 
 from app import app
-#from app import app
+import config as app_config
+import json
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
@@ -43,8 +44,22 @@ def client(tmp_path, monkeypatch):
         else:
             orig_remove(path)
     monkeypatch.setattr(os, "remove", remove_patch)
-    # Patch os.getenv for KEY
-    monkeypatch.setenv("KEY", "dummy_key")
+    # Patch config.CONFIG_PATH to use a temp config file
+    app_config.CONFIG_PATH = str(tmp_path / "config.json")
+    # Write minimal config.json for tests
+    with open(app_config.CONFIG_PATH, "w") as f:
+        json.dump({
+            "GOOGLE_MAPS_API": "https://maps.googleapis.com/maps/api",
+            "API": "/place",
+            "SEARCH_COMPONENT": "/nearbysearch",
+            "OUTPUT_TYPE": "/json?",
+            "RADIUS": 4444,
+            "NORTHEAST_LAT": -25.329914975179992,
+            "NORTHEAST_LON": -49.20322728948593,
+            "SOUTHWEST_LAT": -25.512242704374355,
+            "SOUTHWEST_LON": -49.32304693059921,
+            "API_KEY": "dummy_key"
+        }, f)
     # Patch pd.read_csv to support relative paths
     orig_read_csv = pd.read_csv
     def read_csv_patch(path, *args, **kwargs):
