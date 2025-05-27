@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
-from dotenv import load_dotenv, set_key
 from flows import calculate_coordinates, request_google_places
 from utils import create_estab_phrase, calculate_similarity_sentences
 from werkzeug.utils import secure_filename
@@ -9,6 +8,7 @@ import csv
 import os
 import argparse
 import datetime
+from config import get_config_value, set_config_value
 
 app = Flask(__name__)
 
@@ -16,7 +16,7 @@ UPLOAD_FOLDER = 'uploads/'
 ALLOWED_EXTENSIONS = {'csv'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-load_dotenv()
+#load_dotenv()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -174,14 +174,13 @@ def home():
     if request.method == "POST":
         api_key = request.form.get("apiKey")
         if api_key:
-            dotenv_path = "../.env"
-            set_key(dotenv_path, "KEY", api_key)
+            set_config_value("API_KEY", api_key)
             return redirect(url_for("coordinates_definition"))
     return render_template("main_page.html")
 
 @app.route("/coordinates_definition")
 def coordinates_definition():
-    api_key = os.getenv("KEY")
+    api_key = get_config_value("API_KEY")
     return render_template("coordinates_definition.html", api_key=api_key)
 
 @app.route("/components_result")

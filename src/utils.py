@@ -1,9 +1,7 @@
-import config
-import importlib
+from config import get_config_value
 import requests
 import json
 import pandas as pd
-import os
 import re
 from sentence_transformers import SentenceTransformer, util
 import warnings
@@ -91,25 +89,6 @@ def initialize_variables_request():
 
     return establishments_features_data, establishments_features_labels
 
-def reload_config():
-    """
-    Reloads the config file and updates variables with the latest values.
-    
-    Returns
-    -------
-    tuple
-        A tuple containing updated configuration values (RADIUS, etc.).
-    """
-    importlib.reload(config)
-    
-    # Retrieve the latest config values
-    RADIUS = config.RADIUS
-    GOOGLE_MAPS_API = config.GOOGLE_MAPS_API
-    API = config.API
-    SEARCH_COMPONENT = config.SEARCH_COMPONENT
-    OUTPUT_TYPE = config.OUTPUT_TYPE
-    
-    return RADIUS, GOOGLE_MAPS_API, API, SEARCH_COMPONENT, OUTPUT_TYPE
 
 def create_places_post_request(lat, lon, cat):
     """
@@ -129,8 +108,7 @@ def create_places_post_request(lat, lon, cat):
     tuple
         (url: str, headers: dict, payload: dict)
     """
-    RADIUS, GOOGLE_MAPS_API, API, SEARCH_COMPONENT, OUTPUT_TYPE = reload_config()
-
+    RADIUS = get_config_value("RADIUS")
     url = "https://places.googleapis.com/v1/places:searchText"
 
     payload = {
@@ -148,7 +126,7 @@ def create_places_post_request(lat, lon, cat):
 
     headers = {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": os.getenv('KEY'),
+        "X-Goog-Api-Key": get_config_value("API_KEY"),
         "X-Goog-FieldMask": (
             "places.id,"
             "places.location,"

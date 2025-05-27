@@ -1,10 +1,6 @@
-import os
-import time
 import shapely.geometry
 import pyproj
 import requests
-from dotenv import load_dotenv
-from config import RADIUS, NORTHEAST_LAT, NORTHEAST_LON, SOUTHWEST_LAT, SOUTHWEST_LON
 from utils import (
     read_file,
     initialize_variables_request,
@@ -13,68 +9,25 @@ from utils import (
     create_message_request
 )
 
-def update_config_file(radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon):
-    """
-    Updates the config.py file with new configuration values.
-
-    Parameters
-    ----------
-    radius : float
-        The new radius value.
-    southwest_lat : float
-        The new southwest latitude.
-    southwest_lon : float
-        The new southwest longitude.
-    northeast_lat : float
-        The new northeast latitude.
-    northeast_lon : float
-        The new northeast longitude.
-    """
-    config_path = "./config.py"
-
-    with open(config_path, "r") as f:
-        config_content = f.readlines()
-
-    # Update lines with new values
-    for i, line in enumerate(config_content):
-        if line.startswith("RADIUS"):
-            config_content[i] = f"RADIUS = {radius}\n"
-        elif line.startswith("SOUTHWEST_LAT"):
-            config_content[i] = f"SOUTHWEST_LAT = {southwest_lat}\n"
-        elif line.startswith("SOUTHWEST_LON"):
-            config_content[i] = f"SOUTHWEST_LON = {southwest_lon}\n"
-        elif line.startswith("NORTHEAST_LAT"):
-            config_content[i] = f"NORTHEAST_LAT = {northeast_lat}\n"
-        elif line.startswith("NORTHEAST_LON"):
-            config_content[i] = f"NORTHEAST_LON = {northeast_lon}\n"
-
-    # Write the updated content back to the file
-    with open(config_path, "w") as f:
-        f.writelines(config_content)
 
 def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, northeast_lon):
     """
     Generates a CSV file with geographic coordinates of a rectangular area
-    according to a predefined step in meters, and updates the config file values.
-
-    Parameters
-    ----------
-    None.
-
-    Returns
-    -------
-    str
-        Message indicating the end of execution.
+    according to a predefined step in meters, and updates the config values in config.json.
     """
+    from config import set_config_value
+
+    set_config_value("RADIUS", radius)
+    set_config_value("SOUTHWEST_LAT", southwest_lat)
+    set_config_value("SOUTHWEST_LON", southwest_lon)
+    set_config_value("NORTHEAST_LAT", northeast_lat)
+    set_config_value("NORTHEAST_LON", northeast_lon)
 
     RADIUS = radius
     SOUTHWEST_LAT = southwest_lat
     NORTHEAST_LAT = northeast_lat
     NORTHEAST_LON = northeast_lon
     SOUTHWEST_LON = southwest_lon
-
-    # Update values in config file
-    update_config_file(RADIUS, SOUTHWEST_LAT, SOUTHWEST_LON, NORTHEAST_LAT, NORTHEAST_LON)
 
     to_proxy_transformer = pyproj.Transformer.from_crs("epsg:4326", "epsg:3857")
     to_original_transformer = pyproj.Transformer.from_crs("epsg:3857", "epsg:4326")
