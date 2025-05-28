@@ -261,7 +261,7 @@
                 if (file) {
                     Papa.parse(file, {
                         header: true,
-                        delimiter: ";",
+                        delimiter: ",",
                         complete: function (results) {
                             var data = results.data;
                             table.clear();
