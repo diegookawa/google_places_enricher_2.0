@@ -259,26 +259,35 @@
                 var fileInput = document.getElementById("csv-file");
                 var file = fileInput.files[0];
                 if (file) {
-                    Papa.parse(file, {
-                        header: true,
-                        delimiter: ",",
-                        complete: function (results) {
-                            var data = results.data;
-                            table.clear();
-                            data.forEach(function (row) {
-                                var cat = row.category || row.Category || '';
-                                var phrase = row.matching_phrase || row["Matching Phrase"] || cat;
-                                table.row.add([
-                                    '<input type="checkbox" class="row-checkbox">',
-                                    cat,
-                                    phrase
-                                ]).draw(false);
-                            });
-                        },
-                        error: function (error) {
-                            alert("Error parsing CSV file: " + error.message);
-                        }
-                    });
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const text = e.target.result;
+                        const firstLine = text.split('\n')[0];
+                        const commaCount = (firstLine.match(/,/g) || []).length;
+                        const semicolonCount = (firstLine.match(/;/g) || []).length;
+                        const delimiter = semicolonCount > commaCount ? ";" : ",";
+                        Papa.parse(file, {
+                            header: true,
+                            delimiter: delimiter,
+                            complete: function (results) {
+                                var data = results.data;
+                                table.clear();
+                                data.forEach(function (row) {
+                                    var cat = row.category || row.Category || '';
+                                    var phrase = row.matching_phrase || row["Matching Phrase"] || cat;
+                                    table.row.add([
+                                        '<input type="checkbox" class="row-checkbox">',
+                                        cat,
+                                        phrase
+                                    ]).draw(false);
+                                });
+                            },
+                            error: function (error) {
+                                alert("Error parsing CSV file: " + error.message);
+                            }
+                        });
+                    };
+                    reader.readAsText(file);
                 }
             });
 
