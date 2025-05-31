@@ -203,9 +203,17 @@
       </div>
 
       <table id="match-table" class="display">
+        <colgroup>
+          <col style="width: 9%;"> <!--Category-->
+          <col style="width: 33%;"> <!--Phrase-->
+          <col style="width: 6%;"> <!--Best Score-->
+          <col style="width: 33%;"> <!--Match category phrase-->
+          <col style="width: 19%;"> <!--Matched category-->
+        </colgroup>
         <thead>
           <tr>
             <th>Category</th>
+            <th>Phrase</th>
             <th>Best Score</th>
             <th>Match category phrase</th>
             <th>Matched category</th>
@@ -243,7 +251,7 @@
         <table id="matches-table" class="display" style="width:100%">
           <thead>
             <tr>
-              <th>Category</th>
+              <th>Phrase</th>
               <th>Match Name</th>
               <th>Score</th>
               <th>Rank</th>
@@ -329,6 +337,7 @@
             }
             var rowNode = matchState.table.row.add([
               establishmentPhrase.category,
+              establishmentPhrase.phrase,
               bestScore,
               dropdown,
               matchedCategory
@@ -442,9 +451,9 @@
           lengthChange: false,
           info: false,
           ordering: true,
-          order: [[1, 'desc']],
+          order: [[2, 'desc']],
           dom: "ft<'row'<'col-sm-12'p>>",
-          columns: [null, null, null, null]
+          columns: [null, null, null, null, null]
         });
         matchState.matchesTable = $("#matches-table").DataTable({
           paging: true,
@@ -607,23 +616,23 @@
             if (establishmentPhrase) {
               $("#current-category-name").text(establishmentPhrase.category);
               $("#current-category-phrase").text(establishmentPhrase.phrase);
-              matchState.matchesTable.clear();
-              matchState.currentCategoryMatches = [];
-              var sortedOptions = (establishmentPhrase.options || []).slice().sort(function(a, b) {
-                return Number(b.score) - Number(a.score);
-              });
-              sortedOptions.forEach(function(optionObj) {
-                var rank = calculateRank(optionObj.score, matchState.thresholds);
-                var typeName = (matchState.yelp_categories[optionObj.category_index] && matchState.yelp_categories[optionObj.category_index][1]) || "Unknown";
-                var rankName = getRankName(rank);
-                matchState.currentCategoryMatches.push(optionObj);
-                matchState.matchesTable.row.add([
-                  establishmentPhrase.category,
-                  typeName,
-                  Number(optionObj.score).toFixed(2),
-                  rankName
-                ]).draw(false);
-              });
+                matchState.matchesTable.clear();
+                matchState.currentCategoryMatches = [];
+                var sortedOptions = (establishmentPhrase.options || []).slice().sort(function(a, b) {
+                  return Number(b.score) - Number(a.score);
+                });
+                sortedOptions.forEach(function(optionObj) {
+                  var rank = calculateRank(optionObj.score, matchState.thresholds);
+                  var typeName = (matchState.yelp_categories[optionObj.category_index] && matchState.yelp_categories[optionObj.category_index][1]) || "Unknown";
+                  var rankName = getRankName(rank);
+                  matchState.currentCategoryMatches.push(optionObj);
+                  matchState.matchesTable.row.add([
+                    establishmentPhrase.phrase,
+                    typeName,
+                    Number(optionObj.score).toFixed(2),
+                    rankName
+                  ]).draw(false);
+                });
               $("#matches-modal").show();
               $select.val("-1");
             }
@@ -634,7 +643,7 @@
           var $select = $(this);
           var selectedIdx = $select.val();
           var $row = $select.closest("tr");
-          var categoryCell = $row.find("td").eq(3);
+          var categoryCell = $row.find("td").eq(4);
           var matchedCategory = '';
           if (selectedIdx !== "-1" && matchState.yelp_categories[selectedIdx]) {
             matchedCategory = matchState.yelp_categories[selectedIdx][0];
