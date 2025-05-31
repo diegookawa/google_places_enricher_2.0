@@ -88,6 +88,7 @@ def update_coordinates_csv():
     csv_file_path = 'static/data/output/lat_lon_calculated.csv'
 
     try:
+        os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
         with open(csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['lat', 'lon'])
@@ -201,6 +202,7 @@ def upload_csv():
     df = pd.read_csv(file)
     categories = df.iloc[:, 0].dropna().tolist()
 
+    os.makedirs('static/data/input', exist_ok=True)
     df.to_csv('static/data/input/categories_request.csv', index=False)
 
     return jsonify({"message": "Upload successful", "categories": categories})
@@ -213,6 +215,7 @@ def categories():
         file = request.files['csv-file']
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             df = pd.read_csv(file_path, delimiter=';')
@@ -261,6 +264,7 @@ def enrichment_categories():
     csv_file_path = 'static/data/input/enrichment_categories.csv'
 
     try:
+        os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
         with open(csv_file_path, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['category', 'matching_phrase'])
@@ -301,7 +305,9 @@ def upload_dataset():
     if file and allowed_file(file.filename):
         try:
             filename = secure_filename(file.filename)
-            save_path = os.path.join('static/data/output', filename)
+            save_dir = 'static/data/output'
+            os.makedirs(save_dir, exist_ok=True)
+            save_path = os.path.join(save_dir, filename)
             file.save(save_path)
             
             # TODO: Maybe don't require all columns to be present
