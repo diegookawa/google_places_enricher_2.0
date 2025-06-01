@@ -61,6 +61,7 @@
           <label for="place_id">Place ID</label>
           <input type="text" id="place_id" placeholder="Place ID" required />
 
+          <br /><br />
           <label for="categories">Categories (comma separated)</label>
           <input
             type="text"
@@ -69,24 +70,31 @@
             required
           />
 
-          <label for="lat">Latitude</label>
-          <input
-            type="number"
-            step="any"
-            id="lat"
-            placeholder="Latitude"
-            required
-          />
+          <br /><br />
+          <div class="input-pair">
+            <div>
+              <label for="lat">Latitude</label>
+              <input
+                type="number"
+                step="any"
+                id="lat"
+                placeholder="Latitude"
+                required
+              />
+            </div>
+            <div>
+              <label for="lon">Longitude</label>
+              <input
+                type="number"
+                step="any"
+                id="lon"
+                placeholder="Longitude"
+                required
+              />
+            </div>
+          </div>
 
-          <label for="lon">Longitude</label>
-          <input
-            type="number"
-            step="any"
-            id="lon"
-            placeholder="Longitude"
-            required
-          />
-
+          <br />
           <label for="business_status">Business Status</label>
           <input
             type="text"
@@ -95,27 +103,23 @@
             required
           />
 
+          <br /><br />
           <label for="name">Name</label>
           <input type="text" id="name" placeholder="Name" required />
 
-          <label for="price_level">Price Level</label>
-          <input
-            type="number"
-            step="any"
-            id="price_level"
-            placeholder="Price Level"
-            required
-          />
+          <br /><br />
+          <div>
+            <label for="rating">Rating</label>
+            <input
+              type="number"
+              step="any"
+              id="rating"
+              placeholder="Rating"
+              required
+            />
+          </div>
 
-          <label for="rating">Rating</label>
-          <input
-            type="number"
-            step="any"
-            id="rating"
-            placeholder="Rating"
-            required
-          />
-
+          <br />
           <label for="types">Types (comma separated)</label>
           <input
             type="text"
@@ -124,16 +128,37 @@
             required
           />
 
-          <label for="user_ratings_total">User Ratings Total</label>
-          <input
-            type="number"
-            id="user_ratings_total"
-            placeholder="User Ratings Total"
-            required
-          />
-
-          <label for="vicinity">Vicinity</label>
-          <input type="text" id="vicinity" placeholder="Vicinity" required />
+          <br /><br />
+          <div class="input-pair">
+            <div>
+              <label for="user_ratings_total">User Ratings Total</label>
+              <input
+                type="number"
+                id="user_ratings_total"
+                placeholder="User Ratings Total"
+                required
+              />
+            </div>
+            <div>
+              <label for="vicinity">Vicinity</label>
+              <input
+                type="text"
+                id="vicinity"
+                placeholder="Vicinity"
+                required
+              />
+            </div>
+          </div>
+          <br>
+          <label for="price_level">Price Level</label>
+          <select id="price_level" required>
+            <option value="">Select price level</option>
+            <option value="PRICE_LEVEL_FREE">Free</option>
+            <option value="PRICE_LEVEL_INEXPENSIVE">Inexpensive</option>
+            <option value="PRICE_LEVEL_MODERATE">Moderate</option>
+            <option value="PRICE_LEVEL_EXPENSIVE">Expensive</option>
+            <option value="PRICE_LEVEL_VERY_EXPENSIVE">Very Expensive</option>
+          </select>
 
           <div class="modal-buttons">
             <button type="submit" class="btn-primary">Add Establishment</button>
@@ -214,7 +239,6 @@
 
         $("#view-data-btn").on("click", function () {
           window.location.href = "/view_data";
-         
         });
 
         $("#delete-btn").on("click", function () {
