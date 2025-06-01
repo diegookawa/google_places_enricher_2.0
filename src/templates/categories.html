@@ -17,6 +17,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   </head>
   <body>
+    <button onclick="window.location.href='/coordinates_result'" class="btn-outline" title="Back">
+      &#8592;
+    </button>
+    <br /><br />
     <div class="table-container">
       <h1>Add Categories</h1>
       <div class="table-description">
@@ -138,7 +142,6 @@
             contentType: false,
             success: function (response) {
               loadCategories();
-              
             },
             error: function () {
               alert("An error occurred during the upload.");

@@ -20,6 +20,13 @@
     <div id="map"></div>
 
     <div id="side-panel">
+      <button
+        onclick="window.location.href='/'"
+        class="btn-outline"
+        title="Back"
+      >
+        Return to main page
+      </button>
       <h1>Google Places Enricher 2.0</h1>
       <div class="form-group">
         <label for="city">Search City</label>
@@ -205,7 +212,7 @@
           Math.min(oldNortheastCoord.lat(), oldSouthwestCoord.lat()),
           Math.min(oldNortheastCoord.lng(), oldSouthwestCoord.lng())
         );
- 
+
         clearMarkers();
         placeMarker(northeastCoord);
         placeMarker(southwestCoord);
@@ -283,7 +290,7 @@
       }
 
       function calculateCoordinates() {
-        showLoading(); 
+        showLoading();
 
         if (!northeastCoord || !southwestCoord || !centerCoord) {
           alert(
@@ -317,11 +324,11 @@
           .then((response) => response.json())
           .then((data) => {
             window.location.href = "/coordinates_result";
-            hideLoading(); 
+            hideLoading();
           })
           .catch((error) => {
             console.error("Error:", error);
-            hideLoading(); 
+            hideLoading();
           });
       }
 
