@@ -102,6 +102,7 @@
           oninput="checkFields()"
         />
       </div>
+      <div id="estimate-coord-count" style="margin-bottom: 10px; color: #333; font-size: 0.95em;"></div>
       <button onclick="generateRegions()">Visualize Regions</button>
       <button id="calculate-btn" onclick="calculateCoordinates()">
         Calculate Coordinates
@@ -169,6 +170,7 @@
         const radius = document.getElementById("radius").value;
 
         const calculateBtn = document.getElementById("calculate-btn");
+        const estimateDiv = document.getElementById("estimate-coord-count");
 
         if (
           northeastLat &&
@@ -180,8 +182,21 @@
           radius
         ) {
           calculateBtn.disabled = false;
+
+          // Show estimate if radius is a valid number
+          const radiusNum = parseFloat(radius);
+          if (!isNaN(radiusNum) && radiusNum > 0) {
+            // Create dummy LatLng objects for estimation
+            const sw = { lat: () => parseFloat(southwestLat), lng: () => parseFloat(southwestLng) };
+            const ne = { lat: () => parseFloat(northeastLat), lng: () => parseFloat(northeastLng) };
+            const estimatedCount = estimateCoordinateCount(sw, ne, radiusNum);
+            estimateDiv.textContent = `Estimated coordinates: ${estimatedCount}`;
+          } else {
+            estimateDiv.textContent = "";
+          }
         } else {
           calculateBtn.disabled = true;
+          estimateDiv.textContent = "";
         }
       }
 
@@ -257,6 +272,40 @@
         });
       }
 
+      // Estimate number of coordinates for the given area and radius
+      function estimateCoordinateCount(sw, ne, radius) {
+        // Convert lat/lon to meters using approximate values
+        const R = 6378137; // Earth radius in meters
+        const toRad = (deg) => deg * Math.PI / 180;
+        const dLat = toRad(ne.lat() - sw.lat());
+        const dLon = toRad(ne.lng() - sw.lng());
+        const meanLat = toRad((ne.lat() + sw.lat()) / 2);
+
+        // Approximate distances in meters
+        const dy = dLat * R;
+        const dx = dLon * R * Math.cos(meanLat);
+
+        const step = radius * 1.5;
+        const countX = Math.ceil(Math.abs(dx) / step);
+        const countY = Math.ceil(Math.abs(dy) / step);
+        return countX * countY;
+      }
+
+      const COORDINATE_THRESHOLD = 4000;
+
+      function warnIfTooManyCoordinates(estimatedCount, context) {
+        if (estimatedCount > COORDINATE_THRESHOLD) {
+          const proceed = confirm(
+            `Warning: This area and radius will generate approximately ${estimatedCount} coordinates, which may crash your browser${context}. Do you want to continue?`
+          );
+          if (!proceed) {
+            hideLoading();
+            return true;
+          }
+        }
+        return false;
+      }
+
       function generateRegions() {
         showLoading();
 
@@ -284,6 +333,12 @@
           return;
         }
 
+        // Estimate and warn if too many coordinates
+        const estimatedCount = estimateCoordinateCount(southwestCoord, northeastCoord, radius);
+        if (warnIfTooManyCoordinates(estimatedCount, "")) {
+          return;
+        }
+
         drawShapes(radius);
         drawCentralCircle(centerRadius);
         hideLoading();
@@ -305,6 +360,12 @@
         if (isNaN(radius) || radius <= 0) {
           alert("Please enter a valid radius value.");
           hideLoading();
+          return;
+        }
+
+        // Estimate and warn if too many coordinates
+        const estimatedCount = estimateCoordinateCount(southwestCoord, northeastCoord, radius);
+        if (warnIfTooManyCoordinates(estimatedCount, " or overload the server")) {
           return;
         }
 
