@@ -15,6 +15,8 @@ body {
 #side-panel {
   width: 30%;
   padding: 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
   box-sizing: border-box;
   background-color: #fff;
   border-left: 1px solid #dee2e6;
@@ -97,7 +99,7 @@ button:hover {
   width: 100vw;
   height: 100vh;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1000;/
+  z-index: 1000;
   justify-content: center;
   align-items: center;
   display: flex;
