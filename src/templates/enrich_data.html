@@ -41,6 +41,7 @@
                     <input type="file" id="uploadDataset" name="uploadDataset" accept=".csv">
                     <div id="uploadError" class="error-message" style="display: none; color: red; margin-top: 10px;"></div>
                 </div>
+                <div id="uploadSuccess" style="color:green; margin-top:10px; display:none;"></div>
                 <p>Press return to the main page if you haven't already downloaded data from Google Places<a href="/" class="btn-outline">Return to main page</a></p>
             </div>
 
@@ -96,7 +97,7 @@
     <script>
         var table;
         $("#category-modal").hide();
-        function loadExistingDatasets() {
+        function loadExistingDatasets(callback) {
             $.ajax({
                 url: "/get_available_datasets",
                 method: "GET",
@@ -109,6 +110,9 @@
                             text: dataset.name
                         }));
                     });
+                    if (typeof callback === "function") {
+                        callback();
+                    }
                 },
                 error: function(xhr) {
                     console.error("Error loading datasets:", xhr.responseText);
@@ -119,6 +123,8 @@
         function toggleUploadInput() {
             var select = document.getElementById('existingDataset');
             var uploadGroup = document.getElementById('uploadDatasetGroup');
+            // Hide upload success message on selection change
+            $("#uploadSuccess").hide();
             if (select.value === 'upload') {
                 uploadGroup.style.display = 'block';
             } else {
@@ -138,8 +144,13 @@
                 contentType: false,
                 success: function(response) {
                     $('#uploadError').hide();
-                    loadExistingDatasets();
-                    alert('Dataset uploaded successfully!');
+                    // After loading datasets, set dropdown to new file, hide upload, and show message
+                    loadExistingDatasets(function() {
+                        $("#existingDataset").val(response.filename);
+                        toggleUploadInput();
+                        $("#uploadDatasetGroup").hide();
+                        $("#uploadSuccess").text("Uploaded successfully: " + response.filename).show();
+                    });
                 },
                 error: function(xhr) {
                     var error = xhr.responseJSON ? xhr.responseJSON.error : 'Upload failed';
