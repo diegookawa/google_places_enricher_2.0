@@ -168,9 +168,19 @@
       .match-row.selected {
         background-color: #e6f7ff !important;
       }
+      .error-message {
+        color: #fff;
+        background: #d32f2f;
+        padding: 1em;
+        margin: 1em 0;
+        border-radius: 4px;
+        font-weight: bold;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
+    <div id="error-message" class="error-message" style="display:none"></div>
     <div class="table-container">
       <h1>Match Categories</h1>
       <div class="table-description">
@@ -311,6 +321,12 @@
             $select.append(newOption);
           }
         }
+        function showError(msg) {
+          $('#error-message').text(msg).show();
+        }
+        function hideError() {
+          $('#error-message').hide();
+        }
         function showLoading() { $("#loading-modal").show(); }
         function hideLoading() { $("#loading-modal").hide(); }
 
@@ -418,11 +434,17 @@
 
         // --- Data Loading ---
         function loadCategories() {
+          hideError();
           showLoading();
           $.ajax({
             url: "/get_categories_to_match",
             method: "GET",
             success: function (response) {
+              if (response && response.error) {
+                showError(response.error);
+                hideLoading();
+                return;
+              }
               matchState.establishment_phrases = response.establishment_phrases || [];
               matchState.yelp_categories = response.yelp_categories || [];
               // Apply threshold: if first option's score < good, set selected_option = -1
@@ -437,9 +459,9 @@
               }
               hideLoading();
             },
-            error: function () {
+            error: function (xhr) {
               hideLoading();
-              alert("Error loading categories.");
+              showError("Error loading categories: " + (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : "Unknown error"));
             },
           });
         }
@@ -512,9 +534,10 @@
               var data = JSON.parse(evt.target.result);
               if (!data.establishment_phrases || !Array.isArray(data.establishment_phrases) ||
                   !data.yelp_categories || !Array.isArray(data.yelp_categories)) {
-                alert('Invalid file: missing establishment_phrases or yelp_categories array.');
+                showError('Invalid file: missing establishment_phrases or yelp_categories array.');
                 return;
               }
+              hideError();
               matchState.establishment_phrases = data.establishment_phrases;
               matchState.yelp_categories = data.yelp_categories;
               updateUIWithThresholds();
@@ -540,12 +563,13 @@
               });
               alert('Matches imported successfully.');
             } catch (err) {
-              alert('Failed to import matches: ' + err.message);
+              showError('Failed to import matches: ' + err.message);
             }
           };
           reader.readAsText(file);
         });
         $(document).on('click', '#export-enriched-dataset-btn', function() {
+          hideError();
           var exportObj = {
             establishment_phrases: extractMatchesFromTable(),
             yelp_categories: matchState.yelp_categories ? matchState.yelp_categories.slice() : []
@@ -562,6 +586,10 @@
             data: JSON.stringify(exportObj),
             success: function(response) {
               hideLoading();
+              if (response && response.error) {
+                showError("Export failed: " + response.error);
+                return;
+              }
               if (response && response.download_url) {
                 var a = document.createElement('a');
                 a.href = response.download_url;
@@ -570,12 +598,20 @@
                 a.click();
                 document.body.removeChild(a);
               } else {
-                alert('Export failed: No download link returned.');
+                showError('Export failed: No download link returned.');
               }
             },
             error: function(xhr) {
               hideLoading();
-              alert('Export failed: ' + (xhr.responseText || 'Unknown error'));
+              var msg = "Export failed: ";
+              if (xhr.responseJSON && xhr.responseJSON.error) {
+                msg += xhr.responseJSON.error;
+              } else if (xhr.responseText) {
+                msg += xhr.responseText;
+              } else {
+                msg += "Unknown error";
+              }
+              showError(msg);
             }
           });
         });

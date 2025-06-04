@@ -11,6 +11,15 @@
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
+        .error-message {
+            color: #fff;
+            background: #d32f2f;
+            padding: 1em;
+            margin: 1em 0;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
         .submit-container {
             text-align: center;
             margin-top: 20px;
@@ -23,6 +32,7 @@
 </head>
 
 <body>
+    <div id="error-message" class="error-message" style="display:none"></div>
     <div class="container">
         <div class="content">
             <h1>Enrich Google Places data</h1>
@@ -95,9 +105,17 @@
     </div>
 
     <script>
+        function showError(msg) {
+            $('#error-message').text(msg).show();
+        }
+        function hideError() {
+            $('#error-message').hide();
+        }
+
         var table;
         $("#category-modal").hide();
         function loadExistingDatasets(callback) {
+            hideError();
             $.ajax({
                 url: "/get_available_datasets",
                 method: "GET",
@@ -115,7 +133,7 @@
                     }
                 },
                 error: function(xhr) {
-                    console.error("Error loading datasets:", xhr.responseText);
+                    showError("Error loading datasets: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
                 }
             });
         }
@@ -133,6 +151,7 @@
         }
 
         function uploadDataset(file) {
+            hideError();
             var formData = new FormData();
             formData.append('dataset', file);
 
@@ -155,15 +174,18 @@
                 error: function(xhr) {
                     var error = xhr.responseJSON ? xhr.responseJSON.error : 'Upload failed';
                     $('#uploadError').text(error).show();
+                    showError(error);
                 }
             });
         }
 
         function loadCategories() {
+            hideError();
             $.ajax({
                 url: "/get_enrichment_categories",
                 method: "GET",
                 success: function (response) {
+                    hideError();
                     if (response.categories) {
                         table.clear();
                         response.categories.forEach(function (categoryObj) {
@@ -178,7 +200,7 @@
                     }
                 },
                 error: function (xhr) {
-                    alert("Error loading categories: " + xhr.responseText);
+                    showError("Error loading categories: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
                 },
             });
         }
@@ -237,6 +259,7 @@
 
             $("#csv-upload-form").on("submit", function (event) {
                 event.preventDefault();
+                hideError();
                 var data = [];
                 table.rows().every(function () {
                     var rowData = this.data();
@@ -250,10 +273,11 @@
                     contentType: "application/json",
                     data: JSON.stringify({ categories: data }),
                     success: function (response) {
+                        hideError();
                         alert("Data uploaded successfully.");
                     },
                     error: function (xhr) {
-                        alert("Upload error: " + xhr.responseText);
+                        showError("Upload error: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
                     }
                 });
             });
@@ -267,6 +291,7 @@
             });
 
             $("#load-btn").on("click", function () {
+                hideError();
                 var fileInput = document.getElementById("csv-file");
                 var file = fileInput.files[0];
                 if (file) {
@@ -294,7 +319,7 @@
                                 });
                             },
                             error: function (error) {
-                                alert("Error parsing CSV file: " + error.message);
+                                showError("Error parsing CSV file: " + error.message);
                             }
                         });
                     };
@@ -306,12 +331,13 @@
             let isEditing = false;
 
             $("#edit-btn").on("click", function() {
+                hideError();
                 const checkedRows = table.rows().nodes().toArray().filter(row => 
                     $('input[type="checkbox"]', row).prop('checked')
                 );
 
                 if (checkedRows.length !== 1) {
-                    alert("Please select exactly one category to edit");
+                    showError("Please select exactly one category to edit");
                     return;
                 }
 
@@ -331,10 +357,11 @@
             });
 
             $("#save-category-btn").on("click", function() {
+                hideError();
                 const categoryName = $("#category-input").val().trim();
                 const matchingPhrase = $("#matching-phrase-input").val().trim();
                 if (!categoryName) {
-                    alert("Category name cannot be empty");
+                    showError("Category name cannot be empty");
                     return;
                 }
 
@@ -363,9 +390,10 @@
             });
 
             $("#submit-btn").on("click", function() { 
+                hideError();
                 const selectedDataset = $("#existingDataset").val();
                 if (!selectedDataset || selectedDataset === 'upload') {
-                    alert("Please select a dataset to enrich");
+                    showError("Please select a dataset to enrich");
                     return;
                 }
 
@@ -382,7 +410,7 @@
                 });
 
                 if (categoryData.length === 0) {
-                    alert("No valid categories to save. Please check your table.");
+                    showError("No valid categories to save. Please check your table.");
                     return;
                 }
 
@@ -392,11 +420,12 @@
                     contentType: "application/json",
                     data: JSON.stringify({ categories: categoryData }),
                     success: function() {
+                        hideError();
                         // Redirect to category matching page with just the filename
                         window.location.href = `/match_categories?dataset_path=${encodeURIComponent(selectedDataset)}`;
                     },
                     error: function(xhr) {
-                        alert("Failed to save categories: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
+                        showError("Failed to save categories: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
                     }
                 });
             });
