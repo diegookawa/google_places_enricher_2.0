@@ -17,6 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   </head>
   <body>
+    <div id="error-message" class="error-message" style="display:none"></div>
     <button onclick="window.location.href='/coordinates_result'" class="btn-outline" title="Back">
       &#8592;
     </button>
@@ -85,7 +86,25 @@
       </div>
     </div>
 
+    <style>
+      .error-message {
+        color: #fff;
+        background: #d32f2f;
+        padding: 1em;
+        margin: 1em 0;
+        border-radius: 4px;
+        font-weight: bold;
+        text-align: center;
+      }
+    </style>
     <script>
+      function showError(msg) {
+        $('#error-message').text(msg).show();
+      }
+      function hideError() {
+        $('#error-message').hide();
+      }
+
       $(document).ready(function () {
         var table = $("#table").DataTable({
           paging: true,
@@ -105,10 +124,15 @@
         }
 
         function loadCategories() {
+          hideError();
           $.ajax({
             url: "/get_categories",
             method: "GET",
             success: function (response) {
+              if (response.error) {
+                showError(response.error);
+                return;
+              }
               if (response.categories) {
                 table.clear();
                 response.categories.forEach(function (category) {
@@ -122,7 +146,7 @@
               }
             },
             error: function () {
-              alert("Error loading categories.");
+              showError("Error loading categories.");
             },
           });
         }
@@ -131,7 +155,7 @@
 
         $("#csv-upload-form").on("submit", function (e) {
           e.preventDefault();
-
+          hideError();
           var formData = new FormData(this);
 
           $.ajax({
@@ -141,10 +165,27 @@
             processData: false,
             contentType: false,
             success: function (response) {
+              if (response && response.error) {
+                showError(response.error);
+                return;
+              }
               loadCategories();
             },
-            error: function () {
-              alert("An error occurred during the upload.");
+            error: function (xhr) {
+              if (xhr.responseJSON && xhr.responseJSON.error) {
+                showError(xhr.responseJSON.error);
+              } else if (xhr.responseText) {
+                try {
+                  var resp = JSON.parse(xhr.responseText);
+                  if (resp.error) {
+                    showError(resp.error);
+                    return;
+                  }
+                } catch (e) {}
+                showError("An error occurred during the upload: " + xhr.responseText);
+              } else {
+                showError("An error occurred during the upload.");
+              }
             },
           });
         });
@@ -166,12 +207,13 @@
             $("#category").val("");
             $("#main-modal").hide();
           } else {
-            alert("Please enter a valid category name.");
+            showError("Please enter a valid category name.");
           }
         });
 
         $("#continue-btn").on("click", function () {
           showLoading();
+          hideError();
           var data = [];
           table.rows().every(function () {
             var rowData = this.data();
@@ -182,13 +224,17 @@
             method: "POST",
             contentType: "application/json",
             data: JSON.stringify({ categories: data }),
-            success: function () {
+            success: function (response) {
               hideLoading();
+              if (response && response.error) {
+                showError(response.error);
+                return;
+              }
               window.location.href = "/components_result";
             },
             error: function () {
               hideLoading();
-              alert("An error occurred while updating the CSV file.");
+              showError("An error occurred while updating the CSV file.");
             },
           });
         });
