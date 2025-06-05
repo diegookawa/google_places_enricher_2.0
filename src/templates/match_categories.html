@@ -419,8 +419,14 @@
         // --- Data Loading ---
         function loadCategories() {
           showLoading();
+          var urlParams = new URLSearchParams(window.location.search);
+          var datasetPath = urlParams.get('dataset_path');
+          var apiUrl = "/get_categories_to_match";
+          if (datasetPath) {
+            apiUrl += "?dataset_path=" + encodeURIComponent(datasetPath);
+          }
           $.ajax({
-            url: "/get_categories_to_match",
+            url: apiUrl,
             method: "GET",
             success: function (response) {
               matchState.establishment_phrases = response.establishment_phrases || [];
