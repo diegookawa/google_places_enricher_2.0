@@ -16,12 +16,18 @@
     />
   </head>
   <body>
-    <button onclick="window.location.href='/components_result'" class="btn-outline" title="Back">
+    <button
+      onclick="window.location.href='/components_result'"
+      class="btn-outline"
+      title="Back"
+    >
       &#8592;
     </button>
     <div class="container">
       <h1>Data Visualization for Establishments</h1>
-      <div class="description">Visualize the data from the current establishments</div>
+      <div class="description">
+        Visualize the data from the current establishments
+      </div>
 
       <div class="row">
         <div class="col-small">
@@ -58,7 +64,7 @@
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const data = {{ data | tojson }};
-        
+
         const ratings = data.map(d => d.rating);
         const ratingBuckets = {
           '0–1': 0, '1–2': 0, '2–3': 0, '3–4': 0, '4–5': 0
@@ -89,7 +95,7 @@
         const categories = data.map(d => d.categories).flat();
         const categoryCounts = {};
         categories.forEach(c => categoryCounts[c] = (categoryCounts[c] || 0) + 1);
-        
+
         const topCategories = Object.entries(categoryCounts)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 5);
@@ -98,7 +104,7 @@
           .map(d => ({ name: d.name, reviews: d.user_ratings_total }))
           .sort((a, b) => b.reviews - a.reviews)
           .slice(0, 5);
-        
+
         new Chart(document.getElementById('ratingDistributionChart'), {
           type: 'bar',
           data: {
