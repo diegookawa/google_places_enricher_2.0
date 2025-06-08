@@ -92,21 +92,25 @@ def initialize_variables_request():
 
 def create_places_post_request(lat, lon, cat):
     """
-    Cria o payload e headers para requisição POST usando o endpoint searchText da API Google Places v1.
+    Creates the url that will be used to make the request to the Google places API.
 
     Parameters
     ----------
     lat: float
-        Latitude da coordenada.
+        Geographic coordinate latitude.
     lon: float
-        Longitude da coordenada.
+        Geographic coordinate longitude.
     cat: str
-        Categoria personalizada (ex: "italian", "bakery", etc).
+        Category for data enrichment.
+
+    Raises
+    ------
+    No Raises.
 
     Returns
     -------
-    tuple
-        (url: str, headers: dict, payload: dict)
+    str
+        Url for the request in the Google places API.
     """
     RADIUS = get_config_value("RADIUS")
     url = "https://places.googleapis.com/v1/places:searchText"

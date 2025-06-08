@@ -16,9 +16,14 @@
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   </head>
+
   <body>
-    <div id="error-message" class="error-message" style="display:none"></div>
-    <button onclick="window.location.href='/coordinates_result'" class="btn-outline" title="Back">
+    <div id="error-message" class="error-message" style="display: none"></div>
+    <button
+      onclick="window.location.href='/coordinates_result'"
+      class="btn-outline"
+      title="Back"
+    >
       &#8592;
     </button>
     <br /><br />
@@ -86,23 +91,12 @@
       </div>
     </div>
 
-    <style>
-      .error-message {
-        color: #fff;
-        background: #d32f2f;
-        padding: 1em;
-        margin: 1em 0;
-        border-radius: 4px;
-        font-weight: bold;
-        text-align: center;
-      }
-    </style>
     <script>
       function showError(msg) {
-        $('#error-message').text(msg).show();
+        $("#error-message").text(msg).show();
       }
       function hideError() {
-        $('#error-message').hide();
+        $("#error-message").hide();
       }
 
       $(document).ready(function () {
@@ -182,7 +176,9 @@
                     return;
                   }
                 } catch (e) {}
-                showError("An error occurred during the upload: " + xhr.responseText);
+                showError(
+                  "An error occurred during the upload: " + xhr.responseText
+                );
               } else {
                 showError("An error occurred during the upload.");
               }

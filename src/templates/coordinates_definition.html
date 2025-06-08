@@ -16,6 +16,7 @@
       href="{{ url_for('static', filename='coordinates_definition.css') }}"
     />
   </head>
+
   <body>
     <div id="map"></div>
 
@@ -102,7 +103,10 @@
           oninput="checkFields()"
         />
       </div>
-      <div id="estimate-coord-count" style="margin-bottom: 10px; color: #333; font-size: 0.95em;"></div>
+      <div
+        id="estimate-coord-count"
+        style="margin-bottom: 10px; color: #333; font-size: 0.95em"
+      ></div>
       <button onclick="generateRegions()">Visualize Regions</button>
       <button id="calculate-btn" onclick="calculateCoordinates()">
         Calculate Coordinates
@@ -183,12 +187,16 @@
         ) {
           calculateBtn.disabled = false;
 
-          // Show estimate if radius is a valid number
           const radiusNum = parseFloat(radius);
           if (!isNaN(radiusNum) && radiusNum > 0) {
-            // Create dummy LatLng objects for estimation
-            const sw = { lat: () => parseFloat(southwestLat), lng: () => parseFloat(southwestLng) };
-            const ne = { lat: () => parseFloat(northeastLat), lng: () => parseFloat(northeastLng) };
+            const sw = {
+              lat: () => parseFloat(southwestLat),
+              lng: () => parseFloat(southwestLng),
+            };
+            const ne = {
+              lat: () => parseFloat(northeastLat),
+              lng: () => parseFloat(northeastLng),
+            };
             const estimatedCount = estimateCoordinateCount(sw, ne, radiusNum);
             estimateDiv.textContent = `Estimated coordinates: ${estimatedCount}`;
           } else {
@@ -272,16 +280,13 @@
         });
       }
 
-      // Estimate number of coordinates for the given area and radius
       function estimateCoordinateCount(sw, ne, radius) {
-        // Convert lat/lon to meters using approximate values
         const R = 6378137; // Earth radius in meters
-        const toRad = (deg) => deg * Math.PI / 180;
+        const toRad = (deg) => (deg * Math.PI) / 180;
         const dLat = toRad(ne.lat() - sw.lat());
         const dLon = toRad(ne.lng() - sw.lng());
         const meanLat = toRad((ne.lat() + sw.lat()) / 2);
 
-        // Approximate distances in meters
         const dy = dLat * R;
         const dx = dLon * R * Math.cos(meanLat);
 
@@ -334,7 +339,11 @@
         }
 
         // Estimate and warn if too many coordinates
-        const estimatedCount = estimateCoordinateCount(southwestCoord, northeastCoord, radius);
+        const estimatedCount = estimateCoordinateCount(
+          southwestCoord,
+          northeastCoord,
+          radius
+        );
         if (warnIfTooManyCoordinates(estimatedCount, "")) {
           return;
         }
@@ -364,8 +373,14 @@
         }
 
         // Estimate and warn if too many coordinates
-        const estimatedCount = estimateCoordinateCount(southwestCoord, northeastCoord, radius);
-        if (warnIfTooManyCoordinates(estimatedCount, " or overload the server")) {
+        const estimatedCount = estimateCoordinateCount(
+          southwestCoord,
+          northeastCoord,
+          radius
+        );
+        if (
+          warnIfTooManyCoordinates(estimatedCount, " or overload the server")
+        ) {
           return;
         }
 

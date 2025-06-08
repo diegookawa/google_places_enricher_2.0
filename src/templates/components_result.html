@@ -12,27 +12,20 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='tables.css') }}"
     />
-    <style>
-      .error-message {
-        color: #fff;
-        background: #d32f2f;
-        padding: 1em;
-        margin: 1em 0;
-        border-radius: 4px;
-        font-weight: bold;
-        text-align: center;
-        display: none;
-      }
-    </style>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   </head>
+
   <body>
-    <button onclick="window.location.href='/categories'" class="btn-outline" title="Back">
+    <button
+      onclick="window.location.href='/categories'"
+      class="btn-outline"
+      title="Back"
+    >
       &#8592;
     </button>
-    <br><br>
+    <br /><br />
     <div id="error-message" class="error-message"></div>
     <div class="table-container">
       <h1>Establishments</h1>
@@ -166,7 +159,7 @@
               />
             </div>
           </div>
-          <br>
+          <br />
           <label for="price_level">Price Level</label>
           <select id="price_level" required>
             <option value="">Select price level</option>
@@ -189,10 +182,10 @@
 
     <script>
       function showError(msg) {
-        $('#error-message').text(msg).show();
+        $("#error-message").text(msg).show();
       }
       function hideError() {
-        $('#error-message').hide();
+        $("#error-message").hide();
       }
 
       $("#main-modal").hide();

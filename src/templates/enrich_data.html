@@ -1,436 +1,516 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Enrich Data</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='tables.css') }}">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='tables.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"
+    />
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <style>
-        .error-message {
-            color: #fff;
-            background: #d32f2f;
-            padding: 1em;
-            margin: 1em 0;
-            border-radius: 4px;
-            font-weight: bold;
-            text-align: center;
-        }
-        .submit-container {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .submit-container button {
-            padding: 15px 30px;
-            font-size: 18px;
-        }
-    </style>
-</head>
+  </head>
 
-<body>
-    <div id="error-message" class="error-message" style="display:none"></div>
+  <body>
+    <div id="error-message" class="error-message" style="display: none"></div>
     <div class="container">
-        <div class="content">
-            <h1>Enrich Google Places data</h1>
-            <!-- Component 1: Pick existing dataset to enrich -->
-            <div class="table-container">
-                <div class="form-group">
-                    <!-- TODO: Add a folder for datasets and only list the datasets (not all .csv)-->
-                    <label for="existingDataset">Select Existing Dataset</label>
-                    <select id="existingDataset" name="existingDataset" onchange="toggleUploadInput()">
-                        <option value="">Select a dataset...</option>
-                        <option value="upload">Upload New Dataset</option>
-                    </select>
-                </div>
-                <div class="form-group" id="uploadDatasetGroup" style="display: none;">
-                    <label for="uploadDataset">Upload a Dataset (CSV)</label>
-                    <input type="file" id="uploadDataset" name="uploadDataset" accept=".csv">
-                    <div id="uploadError" class="error-message" style="display: none; color: red; margin-top: 10px;"></div>
-                </div>
-                <div id="uploadSuccess" style="color:green; margin-top:10px; display:none;"></div>
-                <p>Press return to the main page if you haven't already downloaded data from Google Places<a href="/" class="btn-outline">Return to main page</a></p>
-            </div>
-
-            <!-- Component 2: Table for categories -->
-            <div class="table-container">
-                <h2>Manage Categories</h2>
-                <div class="table-buttons">
-                    <div class="btn-group">
-                        <button id="delete-btn" class="btn-outline">Delete</button>
-                        <button id="export-btn" class="btn-outline">Export</button>
-                        <button id="edit-btn" class="btn-outline">Edit</button>
-                        <button class="btn-primary" id="add-new-value-btn">+ Add Category</button>
-                    </div>
-                </div>
-                <table id="table" class="display">
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" id="select-all" /></th>
-                            <th>Category</th>
-                            <th>Matching Phrase</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <div class="upload-container">
-                    <form id="csv-upload-form" enctype="multipart/form-data" method="POST">
-                        <input type="file" id="csv-file" name="csv-file" accept=".csv" />
-                        <button type="button" class="btn-primary" id="load-btn">Load</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Modal for editing and adding -->
-            <div id="category-modal" class="modal">
-                <div class="modal-content">
-                    <span class="close-btn" id="close-category-modal">&times;</span>
-                    <h2 id="modal-title">Add Category</h2>
-                    <input type="text" id="category-input" placeholder="Category name">
-                    <input type="text" id="matching-phrase-input" placeholder="Matching phrase">
-                    <div class="modal-buttons">
-                        <button class="btn-primary" id="save-category-btn">Save</button>
-                        <button class="btn-outline" id="cancel-category-btn">Cancel</button>
-                    </div>
-                </div>
-            </div>
+      <div class="content">
+        <h1>Enrich Google Places data</h1>
+        <!-- Component 1: Pick existing dataset to enrich -->
+        <div class="table-container">
+          <div class="form-group">
+            <!-- TODO: Add a folder for datasets and only list the datasets (not all .csv)-->
+            <label for="existingDataset">Select Existing Dataset</label>
+            <select
+              id="existingDataset"
+              name="existingDataset"
+              onchange="toggleUploadInput()"
+            >
+              <option value="">Select a dataset...</option>
+              <option value="upload">Upload New Dataset</option>
+            </select>
+          </div>
+          <div class="form-group" id="uploadDatasetGroup" style="display: none">
+            <label for="uploadDataset">Upload a Dataset (CSV)</label>
+            <input
+              type="file"
+              id="uploadDataset"
+              name="uploadDataset"
+              accept=".csv"
+            />
+            <div
+              id="uploadError"
+              class="error-message"
+              style="display: none; color: red; margin-top: 10px"
+            ></div>
+          </div>
+          <div
+            id="uploadSuccess"
+            style="color: green; margin-top: 10px; display: none"
+          ></div>
+          <p>
+            Press return to the main page if you haven't already downloaded data
+            from Google Places<a href="/" class="btn-outline"
+              >Return to main page</a
+            >
+          </p>
         </div>
+
+        <!-- Component 2: Table for categories -->
+        <div class="table-container">
+          <h2>Manage Categories</h2>
+          <div class="table-buttons">
+            <div class="btn-group">
+              <button id="delete-btn" class="btn-outline">Delete</button>
+              <button id="export-btn" class="btn-outline">Export</button>
+              <button id="edit-btn" class="btn-outline">Edit</button>
+              <button class="btn-primary" id="add-new-value-btn">
+                + Add Category
+              </button>
+            </div>
+          </div>
+          <table id="table" class="display">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all" /></th>
+                <th>Category</th>
+                <th>Matching Phrase</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="upload-container">
+            <form
+              id="csv-upload-form"
+              enctype="multipart/form-data"
+              method="POST"
+            >
+              <input type="file" id="csv-file" name="csv-file" accept=".csv" />
+              <button type="button" class="btn-primary" id="load-btn">
+                Load
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Modal for editing and adding -->
+        <div id="category-modal" class="modal">
+          <div class="modal-content">
+            <span class="close-btn" id="close-category-modal">&times;</span>
+            <h2 id="modal-title">Add Category</h2>
+            <input
+              type="text"
+              id="category-input"
+              placeholder="Category name"
+            />
+            <input
+              type="text"
+              id="matching-phrase-input"
+              placeholder="Matching phrase"
+            />
+            <div class="modal-buttons">
+              <button class="btn-primary" id="save-category-btn">Save</button>
+              <button class="btn-outline" id="cancel-category-btn">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="submit-container">
-        <button id="submit-btn" class="btn-primary">Submit</button>
+      <button id="submit-btn" class="btn-primary">Submit</button>
     </div>
 
     <script>
-        function showError(msg) {
-            $('#error-message').text(msg).show();
-        }
-        function hideError() {
-            $('#error-message').hide();
-        }
+      function showError(msg) {
+        $("#error-message").text(msg).show();
+      }
+      function hideError() {
+        $("#error-message").hide();
+      }
 
-        var table;
-        $("#category-modal").hide();
-        function loadExistingDatasets(callback) {
-            hideError();
-            $.ajax({
-                url: "/get_available_datasets",
-                method: "GET",
-                success: function(response) {
-                    var select = $("#existingDataset");
-                    select.find('option').not(':first').not(':last').remove();
-                    response.datasets.forEach(function(dataset) {
-                        select.find('option:last').before($('<option>', {
-                            value: dataset.path,  // This is now just the filename
-                            text: dataset.name
-                        }));
-                    });
-                    if (typeof callback === "function") {
-                        callback();
-                    }
-                },
-                error: function(xhr) {
-                    showError("Error loading datasets: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
-                }
+      var table;
+      $("#category-modal").hide();
+      function loadExistingDatasets(callback) {
+        hideError();
+        $.ajax({
+          url: "/get_available_datasets",
+          method: "GET",
+          success: function (response) {
+            var select = $("#existingDataset");
+            select.find("option").not(":first").not(":last").remove();
+            response.datasets.forEach(function (dataset) {
+              select.find("option:last").before(
+                $("<option>", {
+                  value: dataset.path, // This is now just the filename
+                  text: dataset.name,
+                })
+              );
             });
-        }
-
-        function toggleUploadInput() {
-            var select = document.getElementById('existingDataset');
-            var uploadGroup = document.getElementById('uploadDatasetGroup');
-            // Hide upload success message on selection change
-            $("#uploadSuccess").hide();
-            if (select.value === 'upload') {
-                uploadGroup.style.display = 'block';
-            } else {
-                uploadGroup.style.display = 'none';
+            if (typeof callback === "function") {
+              callback();
             }
-        }
-
-        function uploadDataset(file) {
-            hideError();
-            var formData = new FormData();
-            formData.append('dataset', file);
-
-            $.ajax({
-                url: '/upload_dataset',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    $('#uploadError').hide();
-                    // After loading datasets, set dropdown to new file, hide upload, and show message
-                    loadExistingDatasets(function() {
-                        $("#existingDataset").val(response.filename);
-                        toggleUploadInput();
-                        $("#uploadDatasetGroup").hide();
-                        $("#uploadSuccess").text("Uploaded successfully: " + response.filename).show();
-                    });
-                },
-                error: function(xhr) {
-                    var error = xhr.responseJSON ? xhr.responseJSON.error : 'Upload failed';
-                    $('#uploadError').text(error).show();
-                    showError(error);
-                }
-            });
-        }
-
-        function loadCategories() {
-            hideError();
-            $.ajax({
-                url: "/get_enrichment_categories",
-                method: "GET",
-                success: function (response) {
-                    hideError();
-                    if (response.categories) {
-                        table.clear();
-                        response.categories.forEach(function (categoryObj) {
-                            var cat = categoryObj.category || '';
-                            var phrase = (categoryObj.matching_phrase !== undefined && categoryObj.matching_phrase !== null && categoryObj.matching_phrase !== '') ? categoryObj.matching_phrase : cat;
-                            table.row.add([
-                                '<input type="checkbox" class="row-checkbox">',
-                                cat,
-                                phrase
-                            ]).draw(false);
-                        });
-                    }
-                },
-                error: function (xhr) {
-                    showError("Error loading categories: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
-                },
-            });
-        }
-
-        $(document).ready(function () {
-            table = $("#table").DataTable({
-                paging: true,
-                pageLength: 12,
-                lengthChange: false,
-                info: false,
-                ordering: true,
-                dom: "ft<'row'<'col-sm-12'p>>",
-                columns: [
-                    { orderable: false },
-                    null,
-                    null
-                ]
-            });
-
-            loadExistingDatasets();
-            loadCategories();
-
-            $("#select-all").on("click", function () {
-                var rows = table.rows({ search: "applied" }).nodes();
-                $('input[type="checkbox"]', rows).prop("checked", this.checked);
-            });
-
-            $("#table tbody").on("click", 'input[type="checkbox"]', function () {
-                var row = $(this).closest("tr");
-                if (this.checked) {
-                    row.addClass("selected");
-                } else {
-                    row.removeClass("selected");
-                }
-            });
-
-            $("#delete-btn").on("click", function () {
-                table.rows(function (idx, data, node) {
-                    return $('input[type="checkbox"]', node).prop("checked");
-                }).remove().draw();
-            });
-
-            $("#export-btn").on("click", function () {
-                var data = [];
-                table.rows().every(function () {
-                    var rowData = this.data();
-                    data.push([rowData[1], rowData[2]]);
-                });
-                var csv = Papa.unparse({ fields: ["Category", "Matching Phrase"], data: data });
-                var hiddenElement = document.createElement("a");
-                hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
-                hiddenElement.target = "_blank";
-                hiddenElement.download = "enrichment_categories.csv";
-                hiddenElement.click();
-            });
-
-            $("#csv-upload-form").on("submit", function (event) {
-                event.preventDefault();
-                hideError();
-                var data = [];
-                table.rows().every(function () {
-                    var rowData = this.data();
-                    var cat = rowData[1] || '';
-                    var phrase = rowData[2] || cat;
-                    data.push({ category: cat, matching_phrase: phrase });
-                });
-                $.ajax({
-                    url: "/enrichment_categories",
-                    type: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify({ categories: data }),
-                    success: function (response) {
-                        hideError();
-                        alert("Data uploaded successfully.");
-                    },
-                    error: function (xhr) {
-                        showError("Upload error: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
-                    }
-                });
-            });
-
-            $("#add-new-value-btn").on("click", function () {
-                $("#modal-title").text("Add Category");
-                $("#category-input").val("");
-                $("#matching-phrase-input").val("");
-                isEditing = false;
-                $("#category-modal").show();
-            });
-
-            $("#load-btn").on("click", function () {
-                hideError();
-                var fileInput = document.getElementById("csv-file");
-                var file = fileInput.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const text = e.target.result;
-                        const firstLine = text.split('\n')[0];
-                        const commaCount = (firstLine.match(/,/g) || []).length;
-                        const semicolonCount = (firstLine.match(/;/g) || []).length;
-                        const delimiter = semicolonCount > commaCount ? ";" : ",";
-                        Papa.parse(file, {
-                            header: true,
-                            delimiter: delimiter,
-                            complete: function (results) {
-                                var data = results.data;
-                                table.clear();
-                                data.forEach(function (row) {
-                                    var cat = row.category || row.Category || '';
-                                    var phrase = row.matching_phrase || row["Matching Phrase"] || cat;
-                                    table.row.add([
-                                        '<input type="checkbox" class="row-checkbox">',
-                                        cat,
-                                        phrase
-                                    ]).draw(false);
-                                });
-                            },
-                            error: function (error) {
-                                showError("Error parsing CSV file: " + error.message);
-                            }
-                        });
-                    };
-                    reader.readAsText(file);
-                }
-            });
-
-            let editingRow = null;
-            let isEditing = false;
-
-            $("#edit-btn").on("click", function() {
-                hideError();
-                const checkedRows = table.rows().nodes().toArray().filter(row => 
-                    $('input[type="checkbox"]', row).prop('checked')
-                );
-
-                if (checkedRows.length !== 1) {
-                    showError("Please select exactly one category to edit");
-                    return;
-                }
-
-                editingRow = $(checkedRows[0]);
-                const currentCategory = table.row(editingRow).data()[1];
-                const currentPhrase = table.row(editingRow).data()[2];
-                $("#modal-title").text("Edit Category");
-                $("#category-input").val(currentCategory);
-                $("#matching-phrase-input").val(currentPhrase);
-                isEditing = true;
-                $("#category-modal").show();
-            });
-
-            $("#close-category-modal, #cancel-category-btn").on("click", function() {
-                $("#category-modal").hide();
-                editingRow = null;
-            });
-
-            $("#save-category-btn").on("click", function() {
-                hideError();
-                const categoryName = $("#category-input").val().trim();
-                const matchingPhrase = $("#matching-phrase-input").val().trim();
-                if (!categoryName) {
-                    showError("Category name cannot be empty");
-                    return;
-                }
-
-                if (isEditing && editingRow) {
-                    table.row(editingRow).data([
-                        '<input type="checkbox" class="row-checkbox">',
-                        categoryName,
-                        matchingPhrase
-                    ]).draw();
-                    editingRow = null;
-                } else {
-                    table.row.add([
-                        '<input type="checkbox" class="row-checkbox">',
-                        categoryName,
-                        matchingPhrase
-                    ]).draw(false);
-                }
-
-                $("#category-modal").hide();
-            });
-
-            $('#uploadDataset').on('change', function(e) {
-                if (this.files && this.files[0]) {
-                    uploadDataset(this.files[0]);
-                }
-            });
-
-            $("#submit-btn").on("click", function() { 
-                hideError();
-                const selectedDataset = $("#existingDataset").val();
-                if (!selectedDataset || selectedDataset === 'upload') {
-                    showError("Please select a dataset to enrich");
-                    return;
-                }
-
-                // First save the current categories
-                var categoryData = [];
-                table.rows().every(function () {
-                    var rowData = this.data();
-                    var cat = rowData[1];
-                    var phrase = rowData[2] || cat;
-                    // Prevent NaN or undefined/null from being saved
-                    if (cat === undefined || cat === null || cat === '' || cat === 'NaN' || String(cat).toLowerCase() === 'nan') return;
-                    if (phrase === undefined || phrase === null || phrase === '' || phrase === 'NaN' || String(phrase).toLowerCase() === 'nan') phrase = cat;
-                    categoryData.push({ category: cat, matching_phrase: phrase });
-                });
-
-                if (categoryData.length === 0) {
-                    showError("No valid categories to save. Please check your table.");
-                    return;
-                }
-
-                $.ajax({
-                    url: "/enrichment_categories",
-                    type: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify({ categories: categoryData }),
-                    success: function() {
-                        hideError();
-                        // Redirect to category matching page with just the filename
-                        window.location.href = `/match_categories?dataset_path=${encodeURIComponent(selectedDataset)}`;
-                    },
-                    error: function(xhr) {
-                        showError("Failed to save categories: " + (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText));
-                    }
-                });
-            });
+          },
+          error: function (xhr) {
+            showError(
+              "Error loading datasets: " +
+                (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText)
+            );
+          },
         });
-    </script>
-</body>
+      }
 
+      function toggleUploadInput() {
+        var select = document.getElementById("existingDataset");
+        var uploadGroup = document.getElementById("uploadDatasetGroup");
+        // Hide upload success message on selection change
+        $("#uploadSuccess").hide();
+        if (select.value === "upload") {
+          uploadGroup.style.display = "block";
+        } else {
+          uploadGroup.style.display = "none";
+        }
+      }
+
+      function uploadDataset(file) {
+        hideError();
+        var formData = new FormData();
+        formData.append("dataset", file);
+
+        $.ajax({
+          url: "/upload_dataset",
+          type: "POST",
+          data: formData,
+          processData: false,
+          contentType: false,
+          success: function (response) {
+            $("#uploadError").hide();
+            // After loading datasets, set dropdown to new file, hide upload, and show message
+            loadExistingDatasets(function () {
+              $("#existingDataset").val(response.filename);
+              toggleUploadInput();
+              $("#uploadDatasetGroup").hide();
+              $("#uploadSuccess")
+                .text("Uploaded successfully: " + response.filename)
+                .show();
+            });
+          },
+          error: function (xhr) {
+            var error = xhr.responseJSON
+              ? xhr.responseJSON.error
+              : "Upload failed";
+            $("#uploadError").text(error).show();
+            showError(error);
+          },
+        });
+      }
+
+      function loadCategories() {
+        hideError();
+        $.ajax({
+          url: "/get_enrichment_categories",
+          method: "GET",
+          success: function (response) {
+            hideError();
+            if (response.categories) {
+              table.clear();
+              response.categories.forEach(function (categoryObj) {
+                var cat = categoryObj.category || "";
+                var phrase =
+                  categoryObj.matching_phrase !== undefined &&
+                  categoryObj.matching_phrase !== null &&
+                  categoryObj.matching_phrase !== ""
+                    ? categoryObj.matching_phrase
+                    : cat;
+                table.row
+                  .add([
+                    '<input type="checkbox" class="row-checkbox">',
+                    cat,
+                    phrase,
+                  ])
+                  .draw(false);
+              });
+            }
+          },
+          error: function (xhr) {
+            showError(
+              "Error loading categories: " +
+                (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText)
+            );
+          },
+        });
+      }
+
+      $(document).ready(function () {
+        table = $("#table").DataTable({
+          paging: true,
+          pageLength: 12,
+          lengthChange: false,
+          info: false,
+          ordering: true,
+          dom: "ft<'row'<'col-sm-12'p>>",
+          columns: [{ orderable: false }, null, null],
+        });
+
+        loadExistingDatasets();
+        loadCategories();
+
+        $("#select-all").on("click", function () {
+          var rows = table.rows({ search: "applied" }).nodes();
+          $('input[type="checkbox"]', rows).prop("checked", this.checked);
+        });
+
+        $("#table tbody").on("click", 'input[type="checkbox"]', function () {
+          var row = $(this).closest("tr");
+          if (this.checked) {
+            row.addClass("selected");
+          } else {
+            row.removeClass("selected");
+          }
+        });
+
+        $("#delete-btn").on("click", function () {
+          table
+            .rows(function (idx, data, node) {
+              return $('input[type="checkbox"]', node).prop("checked");
+            })
+            .remove()
+            .draw();
+        });
+
+        $("#export-btn").on("click", function () {
+          var data = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            data.push([rowData[1], rowData[2]]);
+          });
+          var csv = Papa.unparse({
+            fields: ["Category", "Matching Phrase"],
+            data: data,
+          });
+          var hiddenElement = document.createElement("a");
+          hiddenElement.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+          hiddenElement.target = "_blank";
+          hiddenElement.download = "enrichment_categories.csv";
+          hiddenElement.click();
+        });
+
+        $("#csv-upload-form").on("submit", function (event) {
+          event.preventDefault();
+          hideError();
+          var data = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            var cat = rowData[1] || "";
+            var phrase = rowData[2] || cat;
+            data.push({ category: cat, matching_phrase: phrase });
+          });
+          $.ajax({
+            url: "/enrichment_categories",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ categories: data }),
+            success: function (response) {
+              hideError();
+              alert("Data uploaded successfully.");
+            },
+            error: function (xhr) {
+              showError(
+                "Upload error: " +
+                  (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText)
+              );
+            },
+          });
+        });
+
+        $("#add-new-value-btn").on("click", function () {
+          $("#modal-title").text("Add Category");
+          $("#category-input").val("");
+          $("#matching-phrase-input").val("");
+          isEditing = false;
+          $("#category-modal").show();
+        });
+
+        $("#load-btn").on("click", function () {
+          hideError();
+          var fileInput = document.getElementById("csv-file");
+          var file = fileInput.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              const text = e.target.result;
+              const firstLine = text.split("\n")[0];
+              const commaCount = (firstLine.match(/,/g) || []).length;
+              const semicolonCount = (firstLine.match(/;/g) || []).length;
+              const delimiter = semicolonCount > commaCount ? ";" : ",";
+              Papa.parse(file, {
+                header: true,
+                delimiter: delimiter,
+                complete: function (results) {
+                  var data = results.data;
+                  table.clear();
+                  data.forEach(function (row) {
+                    var cat = row.category || row.Category || "";
+                    var phrase =
+                      row.matching_phrase || row["Matching Phrase"] || cat;
+                    table.row
+                      .add([
+                        '<input type="checkbox" class="row-checkbox">',
+                        cat,
+                        phrase,
+                      ])
+                      .draw(false);
+                  });
+                },
+                error: function (error) {
+                  showError("Error parsing CSV file: " + error.message);
+                },
+              });
+            };
+            reader.readAsText(file);
+          }
+        });
+
+        let editingRow = null;
+        let isEditing = false;
+
+        $("#edit-btn").on("click", function () {
+          hideError();
+          const checkedRows = table
+            .rows()
+            .nodes()
+            .toArray()
+            .filter((row) => $('input[type="checkbox"]', row).prop("checked"));
+
+          if (checkedRows.length !== 1) {
+            showError("Please select exactly one category to edit");
+            return;
+          }
+
+          editingRow = $(checkedRows[0]);
+          const currentCategory = table.row(editingRow).data()[1];
+          const currentPhrase = table.row(editingRow).data()[2];
+          $("#modal-title").text("Edit Category");
+          $("#category-input").val(currentCategory);
+          $("#matching-phrase-input").val(currentPhrase);
+          isEditing = true;
+          $("#category-modal").show();
+        });
+
+        $("#close-category-modal, #cancel-category-btn").on(
+          "click",
+          function () {
+            $("#category-modal").hide();
+            editingRow = null;
+          }
+        );
+
+        $("#save-category-btn").on("click", function () {
+          hideError();
+          const categoryName = $("#category-input").val().trim();
+          const matchingPhrase = $("#matching-phrase-input").val().trim();
+          if (!categoryName) {
+            showError("Category name cannot be empty");
+            return;
+          }
+
+          if (isEditing && editingRow) {
+            table
+              .row(editingRow)
+              .data([
+                '<input type="checkbox" class="row-checkbox">',
+                categoryName,
+                matchingPhrase,
+              ])
+              .draw();
+            editingRow = null;
+          } else {
+            table.row
+              .add([
+                '<input type="checkbox" class="row-checkbox">',
+                categoryName,
+                matchingPhrase,
+              ])
+              .draw(false);
+          }
+
+          $("#category-modal").hide();
+        });
+
+        $("#uploadDataset").on("change", function (e) {
+          if (this.files && this.files[0]) {
+            uploadDataset(this.files[0]);
+          }
+        });
+
+        $("#submit-btn").on("click", function () {
+          hideError();
+          const selectedDataset = $("#existingDataset").val();
+          if (!selectedDataset || selectedDataset === "upload") {
+            showError("Please select a dataset to enrich");
+            return;
+          }
+
+          // First save the current categories
+          var categoryData = [];
+          table.rows().every(function () {
+            var rowData = this.data();
+            var cat = rowData[1];
+            var phrase = rowData[2] || cat;
+            // Prevent NaN or undefined/null from being saved
+            if (
+              cat === undefined ||
+              cat === null ||
+              cat === "" ||
+              cat === "NaN" ||
+              String(cat).toLowerCase() === "nan"
+            )
+              return;
+            if (
+              phrase === undefined ||
+              phrase === null ||
+              phrase === "" ||
+              phrase === "NaN" ||
+              String(phrase).toLowerCase() === "nan"
+            )
+              phrase = cat;
+            categoryData.push({ category: cat, matching_phrase: phrase });
+          });
+
+          if (categoryData.length === 0) {
+            showError("No valid categories to save. Please check your table.");
+            return;
+          }
+
+          $.ajax({
+            url: "/enrichment_categories",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ categories: categoryData }),
+            success: function () {
+              hideError();
+              // Redirect to category matching page with just the filename
+              window.location.href = `/match_categories?dataset_path=${encodeURIComponent(
+                selectedDataset
+              )}`;
+            },
+            error: function (xhr) {
+              showError(
+                "Failed to save categories: " +
+                  (xhr.responseJSON ? xhr.responseJSON.error : xhr.statusText)
+              );
+            },
+          });
+        });
+      });
+    </script>
+  </body>
 </html>
