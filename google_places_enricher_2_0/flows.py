@@ -1,7 +1,7 @@
 import shapely.geometry
 import pyproj
 import requests
-from utils import (
+from google_places_enricher_2_0.utils import (
     read_file,
     initialize_variables_request,
     create_places_post_request,

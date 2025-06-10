@@ -2,7 +2,7 @@
 from multiprocessing import freeze_support, Process
 from logging.handlers import RotatingFileHandler
 from threading import Thread
-from app import app
+from google_places_enricher_2_0.app import app
 
 import logging
 import signal
