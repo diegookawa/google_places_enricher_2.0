@@ -1,4 +1,4 @@
-from config import get_config_value
+from google_places_enricher_2_0.config import get_config_value
 import requests
 import json
 import pandas as pd

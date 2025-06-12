@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
-from flows import calculate_coordinates, request_google_places
-from utils import create_estab_phrase, calculate_similarity_sentences
+from google_places_enricher_2_0.flows import calculate_coordinates, request_google_places
+from google_places_enricher_2_0.utils import create_estab_phrase, calculate_similarity_sentences
 from werkzeug.utils import secure_filename
 import pandas as pd
 import numpy as np
@@ -8,7 +8,7 @@ import csv
 import os
 import argparse
 import datetime
-from config import get_config_value, set_config_value
+from google_places_enricher_2_0.config import get_config_value, set_config_value
 
 app = Flask(__name__)
 
@@ -420,7 +420,6 @@ def export_enriched_dataset():
                 break
         # If not found, generate it using create_estab_phrase
         if not phrase_col:
-            from utils import create_estab_phrase
             df_phrases = create_estab_phrase(df)
             df = df.merge(df_phrases, on='place_id', how='left')
             phrase_col = 'phrase_establishment'

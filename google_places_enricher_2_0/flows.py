@@ -1,7 +1,8 @@
 import shapely.geometry
 import pyproj
 import requests
-from utils import (
+from google_places_enricher_2_0.config import set_config_value
+from google_places_enricher_2_0.utils import (
     read_file,
     initialize_variables_request,
     create_places_post_request,
@@ -15,7 +16,6 @@ def calculate_coordinates(radius, southwest_lat, southwest_lon, northeast_lat, n
     Generates a CSV file with geographic coordinates of a rectangular area
     according to a predefined step in meters, and updates the config values in config.json.
     """
-    from config import set_config_value
 
     set_config_value("RADIUS", radius)
     set_config_value("SOUTHWEST_LAT", southwest_lat)

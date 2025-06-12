@@ -8,8 +8,8 @@ import numpy as np
 import pytest
 from flask import url_for
 
-from app import app
-import config as app_config
+from google_places_enricher_2_0.app import app
+import google_places_enricher_2_0.config as app_config
 import json
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def client(tmp_path, monkeypatch):
         return orig_open(path, *args, **kwargs)
     monkeypatch.setattr("builtins.open", open_patch)
     # Patch url_for to not fail outside request context
-    monkeypatch.setattr("src.app.url_for", lambda endpoint, **values: f"/static/data/output/{values['filename']}")
+    monkeypatch.setattr("google_places_enricher_2_0.app.url_for", lambda endpoint, **values: f"/static/data/output/{values['filename']}")
     # Provide test client
     with app.test_client() as client:
         yield client
@@ -123,7 +123,7 @@ def test_update_categories_and_process_data_success(client, tmp_path, mocker):
     latlon_path = output_dir / "lat_lon_calculated.csv"
     pd.DataFrame({"lat": [1.0], "lon": [2.0]}).to_csv(latlon_path, index=False)
     # Mock request_google_places to return success
-    mocker.patch("app.request_google_places", return_value="Execution went successfully.")
+    mocker.patch("google_places_enricher_2_0.app.request_google_places", return_value="Execution went successfully.")
     resp = client.post("/update_categories_and_process_data", json={"categories": [["cafe"], ["restaurant"]]})
     assert resp.status_code == 200
     assert resp.json["message"] == "CSV updated successfully"
