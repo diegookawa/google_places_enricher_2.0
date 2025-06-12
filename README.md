@@ -68,7 +68,7 @@ __References:__
 ## Usage Instructions
 1. With your python environment activated, run:
    ```sh
-   python src/app.py --port 5000
+   python run_app.py
    ```
    The app will be available at [http://127.0.0.1:5000](http://127.0.0.1:5000).
 
