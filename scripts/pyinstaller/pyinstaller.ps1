@@ -1,7 +1,7 @@
-$transformersPath = python -c "import transformers; print(transformers.__path__[0])"
-$sitePackages = python -c "import site; print(site.getsitepackages()[0])"
+#$transformersPath = python -c "import transformers; print(transformers.__path__[0])"
+#$sitePackages = python -c "import site; print(site.getsitepackages()[0])"
+  #--paths "$sitePackages" `
 pyi-makespec --name "Google Places Enricher 2.0" `
-  --paths "$sitePackages" `
   --add-data "../../google_places_enricher_2_0/static:google_places_enricher_2_0/static" `
   --add-data "../../google_places_enricher_2_0/templates:google_places_enricher_2_0/templates" `
   --add-data "../../google_places_enricher_2_0/uploads:google_places_enricher_2_0/uploads" `
@@ -23,18 +23,13 @@ pyi-makespec --name "Google Places Enricher 2.0" `
   --hidden-import=typing_extensions `
   --hidden-import=numpy `
   --additional-hooks-dir=./hooks `
-  --console ../../google_places_enricher_2_0/main.py
-  #--windowed ../../google_places_enricher_2_0/main.py
+  --windowed ../../google_places_enricher_2_0/main.py 
+  # Change to --console when debugging
+  
   #--add-data "$transformersPath/models;transformers/models" `
 
   # Optional: uncomment if used
   # --hidden-import=sentencepiece `
   # --hidden-import=protobuf `
-
-  #--add-data "../../src/config.json:config.json" `
-  # --add-data "../../static/data:static/data" `
-  # --add-data "../../requirements.txt:requirements.txt" `
-  # --add-data "../../pyproject.toml:pyproject.toml" `
-  # --add-data "../../src/.flaskenv:.flaskenv" `
 
 pyinstaller "Google Places Enricher 2.0.spec"
