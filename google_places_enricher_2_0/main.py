@@ -11,6 +11,23 @@ import sys
 import socket
 import requests
 import webview
+# import shutil
+
+# # Ensure resource folders exist next to the executable
+# def ensure_resource_folder(folder):
+#     exe_dir = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+#     target = os.path.join(exe_dir, folder)
+#     internal = os.path.join(exe_dir, '_internal', 'google_places_enricher_2_0', folder)
+#     if not os.path.exists(target) and os.path.exists(internal):
+#         shutil.copytree(internal, target)
+
+if getattr(sys, 'frozen', False):
+    exe_dir = os.path.dirname(sys.executable)
+    internal_dir = os.path.join(exe_dir, '_internal', 'google_places_enricher_2_0')
+    if os.path.exists(internal_dir):
+        os.chdir(internal_dir)
+    #for folder in ['templates', 'static', 'uploads']:
+    #   ensure_resource_folder(folder)
 
 APP_NAME="Google Places Enricher 2.0"
 
